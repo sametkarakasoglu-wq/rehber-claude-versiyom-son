@@ -1,0 +1,74 @@
+
+{
+  "name": "Araç Filo Yönetimi",
+  "short_name": "Filo Yönetimi",
+  "description": "Profesyonel Araç Filo Yönetim Sistemi - Araçlarınızı, müşterilerinizi ve kiralamalarınızı kolayca yönetin",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "tr",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "https://cdn.abacus.ai/images/41edf393-eb8d-4e59-b36e-139704293873.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/c7e7fe2c-d413-4fca-bef3-056c3f22e0cc.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/984104d3-fa10-4a5e-838f-85afbd73ddc8.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/f73faa31-9039-4fdc-9116-a48558a40492.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/14bc3496-5fc4-44b5-8fa6-e31184b871ff.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/98478289-d99e-4e91-acd0-ddc5a7d08b12.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/a5f5bf5c-28eb-4013-ae23-dcfb293a86d5.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.abacus.ai/images/fb9cc27f-05ca-4c0e-a706-51f5b8e89fd4.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://cdn.abacus.ai/images/fb9cc27f-05ca-4c0e-a706-51f5b8e89fd4.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

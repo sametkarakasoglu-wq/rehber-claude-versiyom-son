@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "jsx": "react",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": ["index.tsx"]
+}

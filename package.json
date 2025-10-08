@@ -1,0 +1,46 @@
+{
+  "name": "filo_yonetim_app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "main.cjs",
+  "packageManager": "yarn@4.9.4",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite preview --port 3000",
+    "serve": "vite preview",
+    "electron:start": "set ELECTRON_START_URL=http://localhost:8080 && electron .",
+    "electron:build": "npm run build && electron-builder"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "@types/toastify-js": "^1",
+    "electron": "^38.2.2",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  },
+  "dependencies": {
+    "firebase": "^12.3.0",
+    "toastify-js": "^1.12.0"
+  },
+  "build": {
+    "appId": "com.samet.filoyonetimapp",
+    "productName": "Filo Yönetim App",
+    "files": [
+      "dist/**/*",
+      "main.cjs"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
