@@ -103,3 +103,88 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+/**
+ * ========================================
+ * FIREBASE CLOUD MESSAGING (BACKGROUND)
+ * ========================================
+ */
+
+// Import Firebase scripts for service worker
+importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+
+// Initialize Firebase in service worker
+try {
+  firebase.initializeApp({
+    apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
+    authDomain: "rehber-filo.firebaseapp.com",
+    databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "rehber-filo",
+    storageBucket: "rehber-filo.firebasestorage.app",
+    messagingSenderId: "1022169726073",
+    appId: "1:1022169726073:web:584648469dd7854248a8a8"
+  });
+
+  const messaging = firebase.messaging();
+
+  // Handle background messages (when app is closed/minimized)
+  messaging.onBackgroundMessage((payload) => {
+    console.log('[Service Worker] Background message received:', payload);
+
+    const notificationTitle = payload.notification?.title || 'Filo Yönetim';
+    const notificationOptions = {
+      body: payload.notification?.body || 'Yeni bir bildiriminiz var',
+      icon: '/icon-192x192.png',
+      badge: '/icon-192x192.png',
+      tag: payload.data?.tag || 'default',
+      data: payload.data || {},
+      requireInteraction: true, // Kullanıcı tıklayana kadar kalır
+      vibrate: [200, 100, 200],
+      actions: [
+        {
+          action: 'open',
+          title: 'Aç'
+        },
+        {
+          action: 'close',
+          title: 'Kapat'
+        }
+      ]
+    };
+
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+
+  console.log('[Service Worker] Firebase Messaging initialized');
+} catch (error) {
+  console.error('[Service Worker] Firebase Messaging init error:', error);
+}
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification clicked:', event.action);
+  
+  event.notification.close();
+
+  if (event.action === 'close') {
+    return;
+  }
+
+  // Open or focus the app
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Check if there's already a window open
+        for (const client of clientList) {
+          if (client.url === self.location.origin + '/' && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // No window open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow('/');
+        }
+      })
+  );
+});

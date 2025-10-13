@@ -2,6 +2,192 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+console.log('🚀 index.tsx başladı yüklenmeye...');
+/**
+ * Firebase Configuration and Initialization
+ * This file handles Firebase setup and provides sync functions
+ */
+// Firebase will be imported from CDN in index.html
+let firebaseApp = null;
+let firebaseDatabase = null;
+let isFirebaseInitialized = false;
+// Default Firebase configuration
+const defaultFirebaseConfig = {
+    apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
+    authDomain: "rehber-filo.firebaseapp.com",
+    databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "rehber-filo",
+    storageBucket: "rehber-filo.firebasestorage.app",
+    messagingSenderId: "1022169726073",
+    appId: "1:1022169726073:web:584648469dd7854248a8a8"
+};
+/**
+ * Initialize Firebase with user configuration
+ */
+function initializeFirebase(config = null) {
+    console.log('🔥 initializeFirebase() çağrıldı, config:', config);
+    try {
+        // Use provided config or default config
+        const finalConfig = config || defaultFirebaseConfig;
+        if (!finalConfig || !finalConfig.apiKey || !finalConfig.databaseURL) {
+            throw new Error('Firebase konfigürasyonu eksik!');
+        }
+        // Initialize Firebase
+        if (typeof firebase !== 'undefined') {
+            firebaseApp = firebase.initializeApp(finalConfig);
+            firebaseDatabase = firebase.database();
+            isFirebaseInitialized = true;
+            console.log('✅ Firebase başarıyla başlatıldı!');
+            return true;
+        }
+        else {
+            throw new Error('Firebase SDK yüklenmedi!');
+        }
+    }
+    catch (error) {
+        console.error('❌ Firebase başlatma hatası:', error);
+        isFirebaseInitialized = false;
+        return false;
+    }
+}
+/**
+ * Test Firebase connection
+ */
+function testFirebaseConnection() {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!isFirebaseInitialized || !firebaseDatabase) {
+            throw new Error('Firebase başlatılmamış!');
+        }
+        try {
+            // Try to read from database
+            const testRef = firebaseDatabase.ref('.info/connected');
+            const snapshot = yield testRef.once('value');
+            return snapshot.val() === true;
+        }
+        catch (error) {
+            console.error('Firebase bağlantı testi başarısız:', error);
+            return false;
+        }
+    });
+}
+/**
+ * Send all data to Firebase
+ */
+function sendDataToFirebase(data) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!isFirebaseInitialized || !firebaseDatabase) {
+            throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+        }
+        try {
+            const updates = {};
+            // Prepare data for Firebase
+            updates['/vehicles'] = data.vehiclesData || [];
+            updates['/customers'] = data.customersData || [];
+            updates['/rentals'] = data.rentalsData || [];
+            updates['/reservations'] = data.reservationsData || [];
+            updates['/maintenance'] = data.maintenanceData || [];
+            updates['/activities'] = data.activitiesData || [];
+            updates['/settings'] = data.settings || {};
+            updates['/lastUpdate'] = new Date().toISOString();
+            // Send to Firebase
+            yield firebaseDatabase.ref().update(updates);
+            console.log('✅ Veriler Firebase\'e gönderildi!');
+            return true;
+        }
+        catch (error) {
+            console.error('❌ Firebase\'e veri gönderme hatası:', error);
+            throw error;
+        }
+    });
+}
+/**
+ * Fetch all data from Firebase
+ */
+function fetchDataFromFirebase() {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!isFirebaseInitialized || !firebaseDatabase) {
+            throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+        }
+        try {
+            const snapshot = yield firebaseDatabase.ref().once('value');
+            const data = snapshot.val();
+            if (!data) {
+                throw new Error('Firebase\'de veri bulunamadı!');
+            }
+            const result = {
+                vehiclesData: data.vehicles || [],
+                customersData: data.customers || [],
+                rentalsData: data.rentals || [],
+                reservationsData: data.reservations || [],
+                maintenanceData: data.maintenance || [],
+                activitiesData: data.activities || [],
+                settings: data.settings || {},
+                lastUpdate: data.lastUpdate || null
+            };
+            console.log('✅ Veriler Firebase\'den alındı!');
+            return result;
+        }
+        catch (error) {
+            console.error('❌ Firebase\'den veri çekme hatası:', error);
+            throw error;
+        }
+    });
+}
+/**
+ * Setup real-time listener for data changes
+ */
+function setupFirebaseListener(callback) {
+    if (!isFirebaseInitialized || !firebaseDatabase) {
+        console.warn('Firebase başlatılmamış, listener kurulamadı!');
+        return null;
+    }
+    try {
+        const ref = firebaseDatabase.ref();
+        ref.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && callback) {
+                callback(data);
+            }
+        });
+        console.log('✅ Firebase realtime listener kuruldu!');
+        return ref;
+    }
+    catch (error) {
+        console.error('❌ Firebase listener kurulumu hatası:', error);
+        return null;
+    }
+}
+/**
+ * Load data from Firebase (alias for fetchDataFromFirebase)
+ */
+function loadDataFromFirebase() {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield fetchDataFromFirebase();
+    });
+}
+/**
+ * Remove Firebase listener
+ */
+function removeFirebaseListener(ref) {
+    if (ref) {
+        ref.off();
+        console.log('Firebase listener kaldırıldı!');
+    }
+}
+// Firebase function declarations (defined in firebase-config.js)
+// declare function initializeFirebase(config: any): boolean;
+// declare function testFirebaseConnection(): Promise<boolean>;
+// declare function sendDataToFirebase(data: any): Promise<void>;
+// declare function loadDataFromFirebase(): Promise<any>;
 // Simple pseudo-ReactDOM render function
 function render(element, container) {
     if (container) {
@@ -52,17 +238,16 @@ let state = {
         notif_type_activity: true,
         // Firebase Settings
         firebaseConfig: {
-            apiKey: 'AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8',
-            authDomain: 'rehber-filo.firebaseapp.com',
-            databaseURL: 'https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app',
-            projectId: 'rehber-filo',
-            storageBucket: 'rehber-filo.firebasestorage.app',
-            messagingSenderId: '1022169726073',
-            appId: '1:1022169726073:web:584648469dd7854248a8a8'
+            apiKey: '',
+            authDomain: '',
+            databaseURL: '',
+            projectId: '',
+            storageBucket: '',
+            messagingSenderId: '',
+            appId: ''
         },
         firebaseEnabled: false,
         firebaseAutoSync: false,
-        lastSyncDate: null, // Son senkronizasyon tarihi
         // PDF Settings
         companyInfo: {
             name: 'Rehber Rent a Car',
@@ -82,7 +267,7 @@ let state = {
 };
 // State update function
 function setState(newState) {
-    state = { ...state, ...newState };
+    state = Object.assign(Object.assign({}, state), newState);
     saveDataToLocalStorage(); // ÖNCE veriyi kaydet. Bu, eklenti çakışmalarını önler.
     renderApp();
 }
@@ -135,23 +320,6 @@ const quickAccessItems = [
     { id: 'maintenance', icon: 'fa-solid fa-oil-can', text: 'Bakım Kaydı', className: 'btn-add-maintenance' },
 ];
 let activitiesData = [];
-
-// Initialize with sample activities if empty
-function initializeActivitiesData() {
-    if (activitiesData.length === 0) {
-        // Add some initial activities
-        const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        
-        activitiesData = [
-            { icon: 'fa-solid fa-info-circle', message: 'Sistem başlatıldı', time: now },
-            { icon: 'fa-solid fa-car', message: 'Filo yönetim sistemi aktif', time: oneHourAgo },
-            { icon: 'fa-solid fa-database', message: 'Veriler yüklendi', time: oneDayAgo }
-        ];
-    }
-}
-
 function logActivity(icon, message) {
     activitiesData.unshift({ icon, message, time: new Date() }); // Store as Date object
     if (activitiesData.length > 10)
@@ -378,14 +546,14 @@ const DashboardPage = () => {
     <section class="recent-activities-panel">
       <h3>Son Yapılan İşlemler</h3>
       <ul class="activity-list">
-          ${activitiesData.map(activity => `
+          ${activitiesData.filter(activity => activity && activity.icon && activity.message).map(activity => `
               <li class="activity-item">
                   <div class="activity-icon">
                       <i class="fa-solid ${activity.icon}"></i>
                   </div>
                   <div class="activity-details">
                       <p>${activity.message}</p>
-                      <span>${formatTimeAgo(activity.time)}</span>
+                      <span>${activity.time ? formatTimeAgo(activity.time) : 'Bilinmiyor'}</span>
                   </div>
               </li>
           `).join('')}
@@ -441,7 +609,7 @@ const VehiclesPage = () => {
     </div>
     <div class="vehicles-grid">
         ${vehiclesData
-        .map((v, index) => ({ ...v, originalIndex: index })) // Keep original index
+        .map((v, index) => (Object.assign(Object.assign({}, v), { originalIndex: index }))) // Keep original index
         .filter(v => {
         if (!state.filterExpiring)
             return true;
@@ -522,12 +690,13 @@ const CustomersPage = () => {
     </div>
     <div class="customer-list">
         ${customersData
-        .map((c, index) => ({ ...c, originalIndex: index }))
+        .map((c, index) => (Object.assign(Object.assign({}, c), { originalIndex: index })))
         .filter(c => c.name.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
         c.tc.includes(state.searchTerm) ||
         c.phone.includes(state.searchTerm)).map((customer) => {
-        const totalRentals = customer.rentals.length;
-        const hasActiveRental = customer.rentals.some(r => r.status === 'Aktif');
+        const customerRentals = rentalsData.filter(r => r.customerId === customer.id) || [];
+        const totalRentals = customerRentals.length;
+        const hasActiveRental = customerRentals.some(r => r.status === 'active');
         const initials = customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
         return `
             <div class="customer-accordion" data-customer-index="${customer.originalIndex}">
@@ -584,7 +753,7 @@ const CustomersPage = () => {
                         <div class="accordion-section-header">
                             <h4>Kiralama Geçmişi</h4>
                         </div>
-                        ${customer.rentals.length > 0 ? `
+                        ${customerRentals.length > 0 ? `
                             <table class="rental-history-table">
                                 <thead>
                                     <tr>
@@ -594,13 +763,18 @@ const CustomersPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${customer.rentals.map(rental => `
+                                    ${customerRentals.map(rental => {
+            const startDate = rental.startDate ? new Date(rental.startDate).toLocaleDateString('tr-TR') : '-';
+            const endDate = rental.endDate ? new Date(rental.endDate).toLocaleDateString('tr-TR') : '-';
+            const statusText = rental.status === 'active' ? 'Aktif' : 'Tamamlandı';
+            return `
                                         <tr>
-                                            <td>${rental.plate}</td>
-                                            <td>${rental.date}</td>
-                                            <td><span class="status-badge ${rental.status === 'Tamamlandı' ? 'available' : 'rented'}">${rental.status}</span></td>
+                                            <td>${rental.vehiclePlate}</td>
+                                            <td>${startDate} - ${endDate}</td>
+                                            <td><span class="status-badge ${rental.status === 'completed' ? 'available' : 'rented'}">${statusText}</span></td>
                                         </tr>
-                                    `).join('')}
+                                    `;
+        }).join('')}
                                 </tbody>
                             </table>
                         ` : '<p class="no-history">Bu müşterinin kiralama geçmişi bulunmuyor.</p>'}
@@ -755,6 +929,7 @@ const MaintenancePage = () => {
     `;
 };
 const SettingsPage = () => {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
     const createSettingCard = (title, content) => `
       <div class="setting-content-card">
           <h4>${title}</h4>
@@ -895,38 +1070,38 @@ const SettingsPage = () => {
                   <p class="setting-description">Firebase Realtime Database ile verilerinizi senkronize edin. Farklı cihazlardan erişim sağlayın.</p>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>API Key <span style="color: #ef4444;">*</span></label>
-                      <input type="text" class="setting-input" id="firebase-apiKey" value="${state.settings?.firebaseConfig?.apiKey || ''}" placeholder="AIzaSyD...">
+                      <input type="text" class="setting-input" id="firebase-apiKey" value="${((_b = (_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig) === null || _b === void 0 ? void 0 : _b.apiKey) || ''}" placeholder="AIzaSyD...">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Auth Domain</label>
-                      <input type="text" class="setting-input" id="firebase-authDomain" value="${state.settings?.firebaseConfig?.authDomain || ''}" placeholder="project-id.firebaseapp.com">
+                      <input type="text" class="setting-input" id="firebase-authDomain" value="${((_d = (_c = state.settings) === null || _c === void 0 ? void 0 : _c.firebaseConfig) === null || _d === void 0 ? void 0 : _d.authDomain) || ''}" placeholder="project-id.firebaseapp.com">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Database URL <span style="color: #ef4444;">*</span></label>
-                      <input type="text" class="setting-input" id="firebase-databaseURL" value="${state.settings?.firebaseConfig?.databaseURL || ''}" placeholder="https://project-id.firebaseio.com">
+                      <input type="text" class="setting-input" id="firebase-databaseURL" value="${((_f = (_e = state.settings) === null || _e === void 0 ? void 0 : _e.firebaseConfig) === null || _f === void 0 ? void 0 : _f.databaseURL) || ''}" placeholder="https://project-id.firebaseio.com">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Project ID</label>
-                      <input type="text" class="setting-input" id="firebase-projectId" value="${state.settings?.firebaseConfig?.projectId || ''}" placeholder="project-id">
+                      <input type="text" class="setting-input" id="firebase-projectId" value="${((_h = (_g = state.settings) === null || _g === void 0 ? void 0 : _g.firebaseConfig) === null || _h === void 0 ? void 0 : _h.projectId) || ''}" placeholder="project-id">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Storage Bucket</label>
-                      <input type="text" class="setting-input" id="firebase-storageBucket" value="${state.settings?.firebaseConfig?.storageBucket || ''}" placeholder="project-id.appspot.com">
+                      <input type="text" class="setting-input" id="firebase-storageBucket" value="${((_k = (_j = state.settings) === null || _j === void 0 ? void 0 : _j.firebaseConfig) === null || _k === void 0 ? void 0 : _k.storageBucket) || ''}" placeholder="project-id.appspot.com">
                   </div>
                   <div class="form-row" style="margin-bottom: 12px;">
                       <div class="form-group">
                           <label>Messaging Sender ID</label>
-                          <input type="text" class="setting-input" id="firebase-messagingSenderId" value="${state.settings?.firebaseConfig?.messagingSenderId || ''}" placeholder="123456789">
+                          <input type="text" class="setting-input" id="firebase-messagingSenderId" value="${((_m = (_l = state.settings) === null || _l === void 0 ? void 0 : _l.firebaseConfig) === null || _m === void 0 ? void 0 : _m.messagingSenderId) || ''}" placeholder="123456789">
                       </div>
                       <div class="form-group">
                           <label>App ID</label>
-                          <input type="text" class="setting-input" id="firebase-appId" value="${state.settings?.firebaseConfig?.appId || ''}" placeholder="1:123:web:abc">
+                          <input type="text" class="setting-input" id="firebase-appId" value="${((_p = (_o = state.settings) === null || _o === void 0 ? void 0 : _o.firebaseConfig) === null || _p === void 0 ? void 0 : _p.appId) || ''}" placeholder="1:123:web:abc">
                       </div>
                   </div>
-                  ${createCheckbox('firebase_enabled', 'Firebase Senkronizasyonu Aktif', state.settings?.firebaseEnabled || false)}
-                  ${createCheckbox('firebase_auto_sync', 'Otomatik Senkronizasyon (Uygulama Açılışında)', state.settings?.firebaseAutoSync || false)}
+                  ${createCheckbox('firebase_enabled', 'Firebase Senkronizasyonu Aktif', ((_q = state.settings) === null || _q === void 0 ? void 0 : _q.firebaseEnabled) || false)}
+                  ${createCheckbox('firebase_auto_sync', 'Otomatik Senkronizasyon (Uygulama Açılışında)', ((_r = state.settings) === null || _r === void 0 ? void 0 : _r.firebaseAutoSync) || false)}
                   <div class="backup-restore-buttons" style="margin-top: 16px;">
-                      <button class="btn btn-primary" id="btn-test-firebase" ${!state.settings?.firebaseConfig?.apiKey || !state.settings?.firebaseConfig?.databaseURL ? 'disabled' : ''}>
+                      <button class="btn btn-primary" id="btn-test-firebase" ${!((_t = (_s = state.settings) === null || _s === void 0 ? void 0 : _s.firebaseConfig) === null || _t === void 0 ? void 0 : _t.apiKey) || !((_v = (_u = state.settings) === null || _u === void 0 ? void 0 : _u.firebaseConfig) === null || _v === void 0 ? void 0 : _v.databaseURL) ? 'disabled' : ''}>
                           <i class="fa-solid fa-plug"></i> Bağlantıyı Test Et
                       </button>
                   </div>
@@ -934,18 +1109,13 @@ const SettingsPage = () => {
               ${createSettingCard('Veri Senkronizasyonu', `
                   <p class="setting-description">Verilerinizi Firebase ile senkronize edin. Tüm araçlar, müşteriler, kiralamalar ve ayarlar yedeklenecektir.</p>
                   <div class="backup-restore-buttons">
-                      <button class="btn btn-success" id="btn-send-to-firebase" ${!state.settings?.firebaseEnabled ? 'disabled' : ''}>
+                      <button class="btn btn-success" id="btn-send-to-firebase" ${!((_w = state.settings) === null || _w === void 0 ? void 0 : _w.firebaseEnabled) ? 'disabled' : ''}>
                           <i class="fa-solid fa-cloud-arrow-up"></i> Firebase'e Gönder
                       </button>
-                      <button class="btn btn-info" id="btn-fetch-from-firebase" ${!state.settings?.firebaseEnabled ? 'disabled' : ''}>
+                      <button class="btn btn-info" id="btn-fetch-from-firebase" ${!((_x = state.settings) === null || _x === void 0 ? void 0 : _x.firebaseEnabled) ? 'disabled' : ''}>
                           <i class="fa-solid fa-cloud-arrow-down"></i> Firebase'den Al
                       </button>
                   </div>
-                  ${state.settings?.lastSyncDate ? `
-                      <div style="margin-top: 8px; padding: 8px; background: #dcfce7; border-radius: 6px; font-size: 12px; color: #166534; border-left: 3px solid #22c55e;">
-                          <i class="fa-solid fa-check-circle"></i> <strong>Son Senkronizasyon:</strong> ${new Date(state.settings.lastSyncDate).toLocaleString('tr-TR')}
-                      </div>
-                  ` : ''}
                   <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px; font-size: 13px; color: #92400e;">
                       <i class="fa-solid fa-info-circle"></i> <strong>Bilgi:</strong> Firebase ayarlarını kaydettiğinizde, sayfa kapatılırken verileriniz otomatik olarak senkronize edilecektir.
                   </div>
@@ -1119,7 +1289,7 @@ const RentalsPage = () => {
         ${rentalsData
         .map(rental => {
         const customerName = getCustomerName(rental.customerId);
-        return { ...rental, customerName };
+        return Object.assign(Object.assign({}, rental), { customerName });
     })
         .filter(rental => rental.vehiclePlate.toLowerCase().includes(state.searchTerm.toLowerCase()) ||
         rental.customerName.toLowerCase().includes(state.searchTerm.toLowerCase()))
@@ -1234,7 +1404,7 @@ const PlaceholderPage = (pageName, icon) => {
 const VehicleModal = () => {
     const isEditing = state.editingVehicleIndex !== null;
     const vehicle = isEditing ? vehiclesData[state.editingVehicleIndex] : null;
-    const modelParts = vehicle?.brand.split(' ') || ['', ''];
+    const modelParts = (vehicle === null || vehicle === void 0 ? void 0 : vehicle.brand.split(' ')) || ['', ''];
     const brand = modelParts[0];
     const model = modelParts.slice(1).join(' ');
     return `
@@ -1248,11 +1418,11 @@ const VehicleModal = () => {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="plate">Plaka</label>
-                        <input type="text" id="plate" name="plate" placeholder="34 ABC 123" value="${vehicle?.plate || ''}" required ${isEditing ? 'readonly' : ''} oninput="this.value = this.value.toUpperCase()">
+                        <input type="text" id="plate" name="plate" placeholder="34 ABC 123" value="${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.plate) || ''}" required ${isEditing ? 'readonly' : ''} oninput="this.value = this.value.toUpperCase()">
                     </div>
                     <div class="form-group">
                         <label for="km">Kilometre</label>
-                        <input type="number" id="km" name="km" placeholder="Örn: 85000" value="${vehicle?.km.replace(/,/, '') || ''}" required>
+                        <input type="number" id="km" name="km" placeholder="Örn: 85000" value="${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.km.replace(/,/, '')) || ''}" required>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1267,20 +1437,20 @@ const VehicleModal = () => {
                 </div>
                  <div class="form-group">
                     <label for="status">Durum</label>
-                    <select id="status" name="status" value="${vehicle?.status || 'Müsait'}">
-                        <option value="Müsait" ${vehicle?.status === 'Müsait' ? 'selected' : ''}>Müsait</option>
-                        <option value="Kirada" ${vehicle?.status === 'Kirada' ? 'selected' : ''}>Kirada</option>
-                        <option value="Bakımda" ${vehicle?.status === 'Bakımda' ? 'selected' : ''}>Bakımda</option>
+                    <select id="status" name="status" value="${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.status) || 'Müsait'}">
+                        <option value="Müsait" ${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.status) === 'Müsait' ? 'selected' : ''}>Müsait</option>
+                        <option value="Kirada" ${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.status) === 'Kirada' ? 'selected' : ''}>Kirada</option>
+                        <option value="Bakımda" ${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.status) === 'Bakımda' ? 'selected' : ''}>Bakımda</option>
                     </select>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="insuranceDate">Sigorta Bitiş Tarihi</label>
-                        <input type="date" id="insuranceDate" name="insuranceDate" value="${vehicle?.insuranceDate || ''}">
+                        <input type="date" id="insuranceDate" name="insuranceDate" value="${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.insuranceDate) || ''}">
                     </div>
                     <div class="form-group">
                         <label for="inspectionDate">Muayene Bitiş Tarihi</label>
-                        <input type="date" id="inspectionDate" name="inspectionDate" value="${vehicle?.inspectionDate || ''}">
+                        <input type="date" id="inspectionDate" name="inspectionDate" value="${(vehicle === null || vehicle === void 0 ? void 0 : vehicle.inspectionDate) || ''}">
                     </div>
                 </div>
                 <div class="file-upload-group">
@@ -1321,36 +1491,36 @@ const CustomerModal = () => {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="customer-name">Ad Soyad</label>
-                        <input type="text" id="customer-name" name="name" value="${customer?.name || ''}" required>
+                        <input type="text" id="customer-name" name="name" value="${(customer === null || customer === void 0 ? void 0 : customer.name) || ''}" required>
                     </div>
                     <div class="form-group">
                         <label for="customer-tc">TC Kimlik No</label>
-                        <input type="text" id="customer-tc" name="tc" value="${customer?.tc || ''}" required>
+                        <input type="text" id="customer-tc" name="tc" value="${(customer === null || customer === void 0 ? void 0 : customer.tc) || ''}" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="customer-phone">Telefon</label>
-                        <input type="tel" id="customer-phone" name="phone" value="${customer?.phone || ''}" required>
+                        <input type="tel" id="customer-phone" name="phone" value="${(customer === null || customer === void 0 ? void 0 : customer.phone) || ''}" required>
                     </div>
                     <div class="form-group">
                         <label for="customer-email">Email</label>
-                        <input type="email" id="customer-email" name="email" value="${customer?.email || ''}">
+                        <input type="email" id="customer-email" name="email" value="${(customer === null || customer === void 0 ? void 0 : customer.email) || ''}">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="customer-license-number">Ehliyet No</label>
-                        <input type="text" id="customer-license-number" name="licenseNumber" value="${customer?.licenseNumber || ''}">
+                        <input type="text" id="customer-license-number" name="licenseNumber" value="${(customer === null || customer === void 0 ? void 0 : customer.licenseNumber) || ''}">
                     </div>
                     <div class="form-group">
                         <label for="customer-license-date">Ehliyet Tarihi</label>
-                        <input type="date" id="customer-license-date" name="licenseDate" value="${customer?.licenseDate || ''}">
+                        <input type="date" id="customer-license-date" name="licenseDate" value="${(customer === null || customer === void 0 ? void 0 : customer.licenseDate) || ''}">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="customer-address">Adres</label>
-                    <input type="text" id="customer-address" name="address" value="${customer?.address || ''}">
+                    <input type="text" id="customer-address" name="address" value="${(customer === null || customer === void 0 ? void 0 : customer.address) || ''}">
                 </div>
                 <div class="file-upload-group">
                     <label>Belge Yükleme</label>
@@ -1392,16 +1562,16 @@ const RentalModal = () => {
                 <div class="form-group">
                     <label>Müşteri</label>
                     <div class="segmented-control">
-                        <input type="radio" id="customer-type-existing" name="customerType" value="existing" ${state.rentalFormCustomerType === 'existing' ? 'checked' : ''} onclick="toggleCustomerSections('existing')">
+                        <input type="radio" id="customer-type-existing" name="customerType" value="existing" ${state.rentalFormCustomerType === 'existing' ? 'checked' : ''}>
                         <label for="customer-type-existing">Mevcut Müşteri</label>
                         
-                        <input type="radio" id="customer-type-new" name="customerType" value="new" ${state.rentalFormCustomerType === 'new' ? 'checked' : ''} onclick="toggleCustomerSections('new')">
+                        <input type="radio" id="customer-type-new" name="customerType" value="new" ${state.rentalFormCustomerType === 'new' ? 'checked' : ''}>
                         <label for="customer-type-new">Yeni Müşteri</label>
                     </div>
                 </div>
 
                 <!-- Existing Customer Dropdown -->
-                <div class="form-group" id="existing-customer-section" style="display: ${state.rentalFormCustomerType === 'existing' ? 'flex' : 'none'};">
+                <div class="form-group" id="existing-customer-section" style="display: flex;">
                     <select name="customerId" id="customer-id-select">
                         <option value="">Müşteri Seçiniz...</option>
                         ${customersData.map(c => `<option value="${c.id}" ${c.id === preselectedCustomerId ? 'selected' : ''}>${c.name} - ${c.phone}</option>`).join('')}
@@ -1409,40 +1579,25 @@ const RentalModal = () => {
                 </div>
 
                 <!-- New Customer Fields -->
-                <div id="new-customer-section" class="new-customer-form" style="padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; display: ${state.rentalFormCustomerType === 'new' ? 'block' : 'none'};">
-                    <h4 style="margin: 0 0 16px 0; color: #1e293b; font-size: 16px;">👤 Yeni Müşteri Bilgileri</h4>
+                <div id="new-customer-section" style="display: none;">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="new-customer-name">Ad Soyad *</label>
-                            <input type="text" id="new-customer-name" name="newCustomerName" required>
+                            <label for="new-customer-name">Ad Soyad</label>
+                            <input type="text" id="new-customer-name" name="newCustomerName">
                         </div>
                         <div class="form-group">
                             <label for="new-customer-tc">TC Kimlik No</label>
-                            <input type="text" id="new-customer-tc" name="newCustomerTc" maxlength="11" pattern="[0-9]{11}">
+                            <input type="text" id="new-customer-tc" name="newCustomerTc">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="new-customer-phone">Telefon</label>
-                            <input type="tel" id="new-customer-phone" name="newCustomerPhone" placeholder="0555 123 45 67">
+                            <input type="tel" id="new-customer-phone" name="newCustomerPhone">
                         </div>
                         <div class="form-group">
                             <label for="new-customer-email">Email</label>
-                            <input type="email" id="new-customer-email" name="newCustomerEmail" placeholder="ornek@email.com">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="new-customer-address">Adres</label>
-                        <textarea id="new-customer-address" name="newCustomerAddress" rows="2" placeholder="Tam adres bilgisi..."></textarea>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="new-customer-license-number">Ehliyet No</label>
-                            <input type="text" id="new-customer-license-number" name="newCustomerLicenseNumber" placeholder="A1234567">
-                        </div>
-                        <div class="form-group">
-                            <label for="new-customer-license-date">Ehliyet Alış Tarihi</label>
-                            <input type="date" id="new-customer-license-date" name="newCustomerLicenseDate">
+                            <input type="email" id="new-customer-email" name="newCustomerEmail">
                         </div>
                     </div>
                 </div>
@@ -1608,7 +1763,7 @@ const RentalEditModal = () => {
                 <input type="hidden" name="rentalId" value="${rental.id}">
                 <div class="customer-info-display" style="margin-bottom: 16px;">
                     <h4>Müşteri</h4>
-                    <p><i class="fa-solid fa-user"></i> ${customer?.name || 'Bilinmiyor'}</p>
+                    <p><i class="fa-solid fa-user"></i> ${(customer === null || customer === void 0 ? void 0 : customer.name) || 'Bilinmiyor'}</p>
                 </div>
 
                 <div class="form-row">
@@ -1813,7 +1968,14 @@ const App = () => {
     return `
     <nav class="sidebar">
       <div class="sidebar-header">
-        <img src="https://storage.googleapis.com/genai-web-experiments/logo-horizontal.png" alt="Rehber Otomotiv Logo" class="sidebar-logo" />
+        <div class="sidebar-logo">
+          ${state.settings.companyInfo.logo ? `
+            <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+          ` : `
+            <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
+            <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
+          `}
+        </div>
       </div>
       <ul class="nav-menu">
         ${navItems.map(item => `
@@ -1841,12 +2003,42 @@ const App = () => {
   `;
 };
 function renderApp() {
+    console.log('🎨 renderApp() fonksiyonu çağrıldı');
     try {
-        // console.log('Rendering app...');
+        // KRITIK FIX: activitiesData'yı temizle
+        if (activitiesData && Array.isArray(activitiesData)) {
+            activitiesData = activitiesData.filter(activity => {
+                if (!activity || !activity.icon || !activity.message)
+                    return false;
+                // time kontrolü - geçersiz Date objelerini temizle
+                if (activity.time) {
+                    try {
+                        if (!(activity.time instanceof Date)) {
+                            activity.time = new Date(activity.time);
+                        }
+                        if (isNaN(activity.time.getTime())) {
+                            console.warn('⚠️ Geçersiz aktivite tarihi silindi:', activity);
+                            return false;
+                        }
+                    }
+                    catch (e) {
+                        console.warn('⚠️ Aktivite parse hatası, silindi:', activity);
+                        return false;
+                    }
+                }
+                else {
+                    activity.time = new Date(); // time yoksa şimdi ekle
+                }
+                return true;
+            });
+        }
         const root = document.getElementById('root');
-        document.body.className = state.theme; // Apply theme on every render
+        // KRITIK FIX: document.body null kontrolü
+        const body = document.body;
+        if (body && state && state.theme) {
+            body.className = state.theme;
+        }
         render(App(), root);
-        // console.log('App rendered successfully.');
     }
     catch (error) {
         console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
@@ -1857,63 +2049,84 @@ function renderApp() {
     }
 }
 function attachEventListeners() {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14;
     try {
         // console.log('Attaching event listeners...');
         // Theme switcher
-        document.getElementById('theme-toggle')?.addEventListener('change', (e) => {
+        (_a = document.getElementById('theme-toggle')) === null || _a === void 0 ? void 0 : _a.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             const newTheme = isChecked ? 'dark' : 'light';
-            document.body.className = newTheme; // Apply theme to body
+            if (document.body) {
+                document.body.className = newTheme; // Apply theme to body
+            }
             setState({ theme: newTheme });
         });
-        // Settings Page Accordion - MOVED TO SETTINGS PAGE CONDITION
-        
-        // Additional event blocking for all interactive elements inside accordions
-        document.querySelectorAll('.settings-accordion-content input, .settings-accordion-content button, .settings-accordion-content label').forEach(element => {
-            element.addEventListener('click', (e) => {
+        // Settings Page Accordion - Mobile-friendly fix
+        document.querySelectorAll('.settings-accordion-header').forEach(header => {
+            const clickHandler = (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-            });
+                const accordion = header.closest('.settings-accordion') || header.parentElement;
+                if (!accordion)
+                    return;
+                const content = accordion.querySelector('.settings-accordion-content');
+                if (!content)
+                    return;
+                // Toggle active class
+                const isActive = accordion.classList.contains('active');
+                if (isActive) {
+                    accordion.classList.remove('active');
+                    content.style.maxHeight = '0';
+                }
+                else {
+                    accordion.classList.add('active');
+                    content.style.maxHeight = content.scrollHeight + 'px';
+                }
+            };
+            // Both click and touch events for mobile compatibility
+            header.addEventListener('click', clickHandler);
+            header.addEventListener('touchend', clickHandler);
         });
         // Settings Page - Company Info & PDF settings
         document.querySelectorAll('[data-company-key]').forEach(input => {
             input.addEventListener('input', (e) => {
                 const key = e.target.dataset.companyKey;
                 const value = e.target.value;
-                const newCompanyInfo = { ...state.settings.companyInfo, [key]: value };
-                setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
+                const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { [key]: value });
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
             });
         });
-        document.getElementById('companyLogoFile')?.addEventListener('change', (e) => {
+        (_b = document.getElementById('companyLogoFile')) === null || _b === void 0 ? void 0 : _b.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const base64String = reader.result;
-                    const newCompanyInfo = { ...state.settings.companyInfo, logo: base64String };
-                    setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
+                    const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { logo: base64String });
+                    setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
                 };
                 reader.readAsDataURL(file);
             }
         });
-        document.getElementById('remove-logo-btn')?.addEventListener('click', () => {
-            const newCompanyInfo = { ...state.settings.companyInfo, logo: null };
-            setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
+        (_c = document.getElementById('remove-logo-btn')) === null || _c === void 0 ? void 0 : _c.addEventListener('click', () => {
+            const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { logo: null });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
         });
-        document.getElementById('companyPdfBackgroundFile')?.addEventListener('change', (e) => {
+        (_d = document.getElementById('companyPdfBackgroundFile')) === null || _d === void 0 ? void 0 : _d.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const base64String = reader.result;
-                    const newCompanyInfo = { ...state.settings.companyInfo, pdfBackground: base64String };
-                    setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
+                    const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { pdfBackground: base64String });
+                    setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
                 };
                 reader.readAsDataURL(file);
             }
         });
-        document.getElementById('remove-pdf-background-btn')?.addEventListener('click', () => {
-            const newCompanyInfo = { ...state.settings.companyInfo, pdfBackground: null };
-            setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
+        (_e = document.getElementById('remove-pdf-background-btn')) === null || _e === void 0 ? void 0 : _e.addEventListener('click', () => {
+            const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { pdfBackground: null });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
         });
         // Settings Page Controls - FIX: Stop propagation to prevent accordion from closing
         document.querySelectorAll('[data-setting-key]').forEach(el => {
@@ -1921,34 +2134,63 @@ function attachEventListeners() {
                 e.stopPropagation(); // Prevent accordion from closing
                 const key = e.target.dataset.settingKey;
                 const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-                setState({ settings: { ...state.settings, [key]: value } });
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { [key]: value }) });
                 saveDataToLocalStorage(); // Ayar değiştiğinde kaydet
             });
         });
         // PDF Checkboxes - FIX: Stop propagation to prevent accordion from closing
-        document.getElementById('pdf_show_logo')?.addEventListener('change', (e) => {
+        (_f = document.getElementById('pdf_show_logo')) === null || _f === void 0 ? void 0 : _f.addEventListener('change', (e) => {
             e.stopPropagation();
             const isChecked = e.target.checked;
-            const newPdfSettings = { ...state.settings.pdfSettings, showLogo: isChecked };
-            setState({ settings: { ...state.settings, pdfSettings: newPdfSettings } });
+            const newPdfSettings = Object.assign(Object.assign({}, state.settings.pdfSettings), { showLogo: isChecked });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { pdfSettings: newPdfSettings }) });
         });
-        document.getElementById('pdf_show_footer')?.addEventListener('change', (e) => {
+        (_g = document.getElementById('pdf_show_footer')) === null || _g === void 0 ? void 0 : _g.addEventListener('change', (e) => {
             e.stopPropagation();
             const isChecked = e.target.checked;
-            const newPdfSettings = { ...state.settings.pdfSettings, showFooter: isChecked };
-            setState({ settings: { ...state.settings, pdfSettings: newPdfSettings } });
+            const newPdfSettings = Object.assign(Object.assign({}, state.settings.pdfSettings), { showFooter: isChecked });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { pdfSettings: newPdfSettings }) });
         });
-        document.getElementById('pdf_show_background')?.addEventListener('change', (e) => {
+        (_h = document.getElementById('pdf_show_background')) === null || _h === void 0 ? void 0 : _h.addEventListener('change', (e) => {
             e.stopPropagation();
             const isChecked = e.target.checked;
-            const newPdfSettings = { ...state.settings.pdfSettings, showBackground: isChecked };
-            setState({ settings: { ...state.settings, pdfSettings: newPdfSettings } });
+            const newPdfSettings = Object.assign(Object.assign({}, state.settings.pdfSettings), { showBackground: isChecked });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { pdfSettings: newPdfSettings }) });
         });
         // Settings Page - Save Button
-        document.querySelector('.btn-gradient-save')?.addEventListener('click', () => {
+        (_j = document.querySelector('.btn-gradient-save')) === null || _j === void 0 ? void 0 : _j.addEventListener('click', () => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             // Veriler her değişiklikte zaten kaydediliyor, bu buton sadece geri bildirim ve UI temizliği için.
             saveDataToLocalStorage(); // En son halini garantiye alarak kaydet.
-            showToast('Ayarlar başarıyla kaydedildi!', 'success');
+            // 🔥 Firebase'e otomatik kaydet
+            if ((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) {
+                try {
+                    const dataToSend = {
+                        vehiclesData,
+                        customersData,
+                        rentalsData,
+                        reservationsData,
+                        maintenanceData,
+                        activitiesData,
+                        settings: state.settings,
+                    };
+                    // Firebase'e gönder
+                    if (typeof sendDataToFirebase === 'function') {
+                        yield sendDataToFirebase(dataToSend);
+                        showToast('✅ Ayarlar kaydedildi ve Firebase\'e yüklendi!', 'success');
+                    }
+                    else {
+                        showToast('✅ Ayarlar kaydedildi!', 'success');
+                    }
+                }
+                catch (error) {
+                    console.error('Firebase kaydetme hatası:', error);
+                    showToast('✅ Ayarlar yerel olarak kaydedildi!', 'success');
+                }
+            }
+            else {
+                showToast('✅ Ayarlar başarıyla kaydedildi!', 'success');
+            }
             // Tüm açık akordiyonları kapat
             document.querySelectorAll('.settings-accordion.active').forEach(accordion => {
                 accordion.classList.remove('active');
@@ -1957,9 +2199,9 @@ function attachEventListeners() {
                     content.style.maxHeight = '0';
                 }
             });
-        });
+        }));
         // Settings Page - Backup and Restore
-        document.getElementById('btn-export-data')?.addEventListener('click', () => {
+        (_k = document.getElementById('btn-export-data')) === null || _k === void 0 ? void 0 : _k.addEventListener('click', () => {
             const dataToExport = {
                 vehiclesData,
                 customersData,
@@ -1983,7 +2225,7 @@ function attachEventListeners() {
             URL.revokeObjectURL(url);
         });
         const importFileInput = document.getElementById('import-file-input');
-        document.getElementById('btn-import-data')?.addEventListener('click', () => {
+        (_l = document.getElementById('btn-import-data')) === null || _l === void 0 ? void 0 : _l.addEventListener('click', () => {
             importFileInput.click();
         });
         // ==================== FIREBASE HANDLERS ====================
@@ -1994,77 +2236,67 @@ function attachEventListeners() {
                 const inputId = e.target.id;
                 const key = inputId.replace('firebase-', '');
                 const value = e.target.value;
-                const newFirebaseConfig = { ...state.settings.firebaseConfig, [key]: value };
-                setState({ settings: { ...state.settings, firebaseConfig: newFirebaseConfig } });
+                const newFirebaseConfig = Object.assign(Object.assign({}, state.settings.firebaseConfig), { [key]: value });
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseConfig: newFirebaseConfig }) });
             });
             // Also prevent click and focus events from bubbling
             input.addEventListener('click', (e) => e.stopPropagation());
             input.addEventListener('focus', (e) => e.stopPropagation());
         });
         // Firebase enabled/auto-sync checkboxes
-        document.getElementById('firebase_enabled')?.addEventListener('change', (e) => {
+        (_m = document.getElementById('firebase_enabled')) === null || _m === void 0 ? void 0 : _m.addEventListener('change', (e) => {
             e.stopPropagation();
             const isChecked = e.target.checked;
-            setState({ settings: { ...state.settings, firebaseEnabled: isChecked } });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseEnabled: isChecked }) });
         });
-        document.getElementById('firebase_auto_sync')?.addEventListener('change', (e) => {
+        (_o = document.getElementById('firebase_auto_sync')) === null || _o === void 0 ? void 0 : _o.addEventListener('change', (e) => {
             e.stopPropagation();
             const isChecked = e.target.checked;
-            setState({ settings: { ...state.settings, firebaseAutoSync: isChecked } });
+            setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseAutoSync: isChecked }) });
         });
-        // Test Firebase connection - improved version
-        document.getElementById('btn-test-firebase')?.addEventListener('click', async (e) => {
+        // Test Firebase connection
+        (_p = document.getElementById('btn-test-firebase')) === null || _p === void 0 ? void 0 : _p.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             e.stopPropagation();
             const btn = e.target;
             const originalText = btn.innerHTML;
             try {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Test Ediliyor...';
-                
-                console.log('Firebase test başlatılıyor...');
-                
-                // Fonksiyon kontrolü
-                console.log('testFirebaseConnection fonksiyonu:', typeof testFirebaseConnection);
-                console.log('initializeFirebase fonksiyonu:', typeof initializeFirebase);
-                
-                if (typeof testFirebaseConnection !== 'function') {
-                    throw new Error('Firebase fonksiyonları yüklenmedi - firebase-config.js yüklü mü?');
+                // Check if testFirebaseConnection function exists
+                if (typeof testFirebaseConnection === 'function') {
+                    const config = (_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig;
+                    if (!(config === null || config === void 0 ? void 0 : config.apiKey) || !(config === null || config === void 0 ? void 0 : config.databaseURL)) {
+                        throw new Error('API Key ve Database URL gerekli!');
+                    }
+                    // Initialize Firebase if not already
+                    if (typeof initializeFirebase === 'function') {
+                        initializeFirebase(config);
+                    }
+                    const isConnected = yield testFirebaseConnection();
+                    if (isConnected) {
+                        showToast('Firebase bağlantısı başarılı! ✅', 'success');
+                    }
+                    else {
+                        throw new Error('Bağlantı kurulamadı');
+                    }
                 }
-                
-                const config = state.settings?.firebaseConfig;
-                console.log('Firebase config:', config);
-                
-                if (!config?.apiKey || !config?.databaseURL) {
-                    throw new Error('Firebase konfigürasyonu eksik! API Key ve Database URL gerekli.');
-                }
-                
-                // Initialize Firebase if not already
-                if (typeof initializeFirebase === 'function') {
-                    console.log('Firebase başlatılıyor...');
-                    await initializeFirebase(config);
-                }
-                
-                console.log('Bağlantı testi yapılıyor...');
-                const isConnected = await testFirebaseConnection();
-                
-                if (isConnected) {
-                    showToast('🎉 Firebase bağlantısı başarılı!', 'success');
-                    console.log('Firebase bağlantısı başarılı!');
-                } else {
-                    throw new Error('Firebase bağlantısı başarısız - database erişimi yok');
+                else {
+                    throw new Error('Firebase fonksiyonları yüklenmedi');
                 }
             }
             catch (error) {
                 console.error('Firebase test error:', error);
-                showToast(`❌ Firebase hatası: ${error.message}`, 'error');
+                showToast(`Firebase bağlantı hatası: ${error.message}`, 'error');
             }
             finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
-        });
+        }));
         // Send data to Firebase
-        document.getElementById('btn-send-to-firebase')?.addEventListener('click', async (e) => {
+        (_q = document.getElementById('btn-send-to-firebase')) === null || _q === void 0 ? void 0 : _q.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             e.stopPropagation();
             const btn = e.target;
             const originalText = btn.innerHTML;
@@ -2084,25 +2316,15 @@ function attachEventListeners() {
                 // Check if Firebase functions exist
                 if (typeof sendDataToFirebase === 'function') {
                     // Initialize Firebase if not already
-                    const config = state.settings?.firebaseConfig;
+                    const config = (_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig;
                     if (typeof initializeFirebase === 'function') {
                         initializeFirebase(config);
                     }
-                    await sendDataToFirebase(dataToSend);
-                    
-                    // Update last sync date
-                    const now = new Date();
-                    setState({ 
-                        settings: { 
-                            ...state.settings, 
-                            lastSyncDate: now.toISOString() 
-                        } 
-                    });
-                    
-                    const vehicleCount = vehiclesData?.length || 0;
-                    const customerCount = customersData?.length || 0;
-                    const rentalCount = rentalsData?.length || 0;
-                    showToast(`Veriler başarıyla gönderildi! 📤\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama\nSon Sync: ${now.toLocaleString('tr-TR')}`, 'success');
+                    yield sendDataToFirebase(dataToSend);
+                    const vehicleCount = (vehiclesData === null || vehiclesData === void 0 ? void 0 : vehiclesData.length) || 0;
+                    const customerCount = (customersData === null || customersData === void 0 ? void 0 : customersData.length) || 0;
+                    const rentalCount = (rentalsData === null || rentalsData === void 0 ? void 0 : rentalsData.length) || 0;
+                    showToast(`Veriler başarıyla gönderildi! 📤\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama`, 'success');
                 }
                 else {
                     throw new Error('Firebase fonksiyonları yüklenmedi');
@@ -2116,9 +2338,10 @@ function attachEventListeners() {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
-        });
+        }));
         // Fetch data from Firebase
-        document.getElementById('btn-fetch-from-firebase')?.addEventListener('click', async (e) => {
+        (_r = document.getElementById('btn-fetch-from-firebase')) === null || _r === void 0 ? void 0 : _r.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
             e.stopPropagation();
             const btn = e.target;
             const originalText = btn.innerHTML;
@@ -2126,13 +2349,13 @@ function attachEventListeners() {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Alınıyor...';
                 // Check if Firebase functions exist
-                if (typeof loadDataFromFirebase === 'function') {
+                if (typeof fetchDataFromFirebase === 'function') {
                     // Initialize Firebase if not already
-                    const config = state.settings?.firebaseConfig;
+                    const config = (_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig;
                     if (typeof initializeFirebase === 'function') {
-                        initializeFirebase(config);
+                        yield initializeFirebase(config);
                     }
-                    const data = await loadDataFromFirebase();
+                    const data = yield fetchDataFromFirebase();
                     // Update local data
                     if (data.vehiclesData)
                         vehiclesData = data.vehiclesData;
@@ -2147,18 +2370,14 @@ function attachEventListeners() {
                     if (data.activitiesData)
                         activitiesData = data.activitiesData;
                     if (data.settings) {
-                        state.settings = { ...state.settings, ...data.settings };
+                        state.settings = Object.assign(Object.assign({}, state.settings), data.settings);
                     }
-                    // Update last sync date
-                    const now = new Date();
-                    state.settings.lastSyncDate = now.toISOString();
-                    
                     // Save to localStorage
                     saveDataToLocalStorage();
-                    const vehicleCount = vehiclesData?.length || 0;
-                    const customerCount = customersData?.length || 0;
-                    const rentalCount = rentalsData?.length || 0;
-                    showToast(`Veriler başarıyla alındı! 📥\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama\nSon Sync: ${now.toLocaleString('tr-TR')}`, 'success');
+                    const vehicleCount = (vehiclesData === null || vehiclesData === void 0 ? void 0 : vehiclesData.length) || 0;
+                    const customerCount = (customersData === null || customersData === void 0 ? void 0 : customersData.length) || 0;
+                    const rentalCount = (rentalsData === null || rentalsData === void 0 ? void 0 : rentalsData.length) || 0;
+                    showToast(`Veriler başarıyla alındı! 📥\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama`, 'success');
                     // Re-render the app
                     renderApp();
                 }
@@ -2174,34 +2393,34 @@ function attachEventListeners() {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
-        });
+        }));
         // PWA Install button
-        document.getElementById('btn-install-pwa')?.addEventListener('click', async (e) => {
+        (_s = document.getElementById('btn-install-pwa')) === null || _s === void 0 ? void 0 : _s.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
             e.stopPropagation();
             const deferredPrompt = window.pwaInstallPrompt;
             if (!deferredPrompt) {
-                showToast('Bu uygulama zaten kurulu veya tarayıcınız PWA kurulumunu desteklemiyor. 📱', 'info');
+                showToast('Bu uygulama zaten kurulu veya tarayıcınız PWA kurulumunu desteklemiyor. 📱', 'success');
                 return;
             }
             try {
                 // Show the install prompt
                 deferredPrompt.prompt();
                 // Wait for the user to respond
-                const { outcome } = await deferredPrompt.userChoice;
+                const { outcome } = yield deferredPrompt.userChoice;
                 if (outcome === 'accepted') {
                     showToast('Uygulama kuruluyor... 🎉', 'success');
                     window.pwaInstallPrompt = null;
                 }
                 else {
-                    showToast('Kurulum iptal edildi.', 'info');
+                    showToast('Kurulum iptal edildi.', 'success');
                 }
             }
             catch (error) {
                 console.error('PWA install error:', error);
                 showToast('Kurulum sırasında bir hata oluştu.', 'error');
             }
-        });
-        importFileInput?.addEventListener('change', (event) => {
+        }));
+        importFileInput === null || importFileInput === void 0 ? void 0 : importFileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -2221,7 +2440,8 @@ function attachEventListeners() {
                             let nextCustomerId = Math.max(0, ...tempCustomersData.map(c => c.id)) + 1;
                             if (importedData.rentals && Array.isArray(importedData.rentals)) {
                                 importedData.rentals.forEach(rental => {
-                                    const customerName = rental.customer?.trim();
+                                    var _a;
+                                    const customerName = (_a = rental.customer) === null || _a === void 0 ? void 0 : _a.trim();
                                     if (customerName && !tempCustomersData.some(c => c.name.toLowerCase() === customerName.toLowerCase())) {
                                         const newCustomer = {
                                             id: nextCustomerId++,
@@ -2263,7 +2483,7 @@ function attachEventListeners() {
                             // 3. Kiralamaları Dönüştür
                             if (importedData.rentals && Array.isArray(importedData.rentals)) {
                                 const convertedRentals = importedData.rentals.map(r => {
-                                    const customer = tempCustomersData.find(c => c.name.toLowerCase() === r.customer?.toLowerCase());
+                                    const customer = tempCustomersData.find(c => { var _a; return c.name.toLowerCase() === ((_a = r.customer) === null || _a === void 0 ? void 0 : _a.toLowerCase()); });
                                     const isActive = r.endDate === "" || !r.endDate;
                                     return {
                                         id: Date.now() + Math.random(), // Use a more robust ID
@@ -2330,10 +2550,7 @@ function attachEventListeners() {
                             const currentData = JSON.parse(localStorage.getItem('rehberOtomotivData') || '{}');
                             // İçe aktarılan veriyi mevcut verinin üzerine "birleştir".
                             // Bu sayede sadece içe aktarılan dosyada olan alanlar güncellenir.
-                            const mergedData = {
-                                ...currentData,
-                                ...dataToLoad
-                            };
+                            const mergedData = Object.assign(Object.assign({}, currentData), dataToLoad);
                             localStorage.setItem('rehberOtomotivData', JSON.stringify(mergedData));
                             localStorage.setItem('showImportSuccessToast', 'true'); // Başarı mesajı için işaret bırak
                             // Kaydetme fonksiyonunu burada çağırmıyoruz, çünkü zaten localStorage'a yazdık.
@@ -2395,8 +2612,8 @@ function attachEventListeners() {
             }
         });
         // Quick access buttons on dashboard
-        document.querySelector('.btn-add-vehicle')?.addEventListener('click', () => openModal('vehicle'));
-        document.querySelector('.btn-add-customer')?.addEventListener('click', () => openModal('customer'));
+        (_t = document.querySelector('.btn-add-vehicle')) === null || _t === void 0 ? void 0 : _t.addEventListener('click', () => openModal('vehicle'));
+        (_u = document.querySelector('.btn-add-customer')) === null || _u === void 0 ? void 0 : _u.addEventListener('click', () => openModal('customer'));
         // For now, other quick access buttons navigate to their pages, which is handled above.
         // Rent button on dashboard available vehicles list
         document.querySelectorAll('.btn-rent-small').forEach(btn => {
@@ -2421,7 +2638,7 @@ function attachEventListeners() {
             }
             if (modalType === 'rental') {
                 newState.isRentalModalOpen = true;
-                newState.rentalFormCustomerType = 'new'; // Default to new customer
+                newState.rentalFormCustomerType = 'existing'; // Reset to default
                 if (typeof entityIndex === 'number')
                     newState.selectedVehicleForAction = vehiclesData[entityIndex];
             }
@@ -2499,11 +2716,11 @@ function attachEventListeners() {
             setState(newState);
         };
         // Open vehicle modal
-        document.getElementById('add-vehicle-btn')?.addEventListener('click', () => openModal('vehicle'));
-        document.getElementById('add-customer-btn')?.addEventListener('click', () => openModal('customer'));
+        (_v = document.getElementById('add-vehicle-btn')) === null || _v === void 0 ? void 0 : _v.addEventListener('click', () => openModal('vehicle'));
+        (_w = document.getElementById('add-customer-btn')) === null || _w === void 0 ? void 0 : _w.addEventListener('click', () => openModal('customer'));
         // Open reservation/maintenance modals
-        document.getElementById('add-reservation-btn')?.addEventListener('click', () => openModal('reservation'));
-        document.getElementById('add-maintenance-btn')?.addEventListener('click', () => openModal('maintenance'));
+        (_x = document.getElementById('add-reservation-btn')) === null || _x === void 0 ? void 0 : _x.addEventListener('click', () => openModal('reservation'));
+        (_y = document.getElementById('add-maintenance-btn')) === null || _y === void 0 ? void 0 : _y.addEventListener('click', () => openModal('maintenance'));
         // Open rental/check-in modals
         document.querySelectorAll('.btn-rent').forEach(btn => {
             const card = btn.closest('.vehicle-card');
@@ -2576,7 +2793,7 @@ function attachEventListeners() {
                         return;
                     const action = button.dataset.action;
                     const card = button.closest('.rental-card');
-                    const rentalId = card?.dataset.rentalId;
+                    const rentalId = card === null || card === void 0 ? void 0 : card.dataset.rentalId;
                     const docUrl = button.dataset.docUrl;
                     if (!action || !rentalId)
                         return;
@@ -2620,45 +2837,6 @@ function attachEventListeners() {
                 }
             }
         }
-        
-        // --- SETTINGS PAGE LISTENERS ---
-        if (state.activePage === 'settings') {
-            // Settings Page Accordion - Use event delegation to prevent duplicate listeners
-            const settingsBody = document.querySelector('.settings-body');
-            if (settingsBody && !settingsBody.hasAttribute('data-accordion-listeners')) {
-                settingsBody.setAttribute('data-accordion-listeners', 'true');
-                settingsBody.addEventListener('click', (e) => {
-                    const header = e.target.closest('.settings-accordion-header');
-                    if (!header) return;
-                    
-                    // Prevent accordion toggle if clicking on interactive elements
-                    if (e.target.tagName === 'INPUT' || 
-                        e.target.tagName === 'BUTTON' || 
-                        e.target.classList.contains('btn') ||
-                        e.target.closest('button:not(.settings-accordion-header)')) {
-                        return;
-                    }
-                    
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const accordion = header.closest('.settings-accordion');
-                    const isActive = accordion.classList.contains('active');
-                    const content = accordion.querySelector('.settings-accordion-content');
-                    
-                    if (isActive) {
-                        // Close accordion
-                        accordion.classList.remove('active');
-                        content.style.maxHeight = '0';
-                    } else {
-                        // Open accordion
-                        accordion.classList.add('active');
-                        content.style.maxHeight = content.scrollHeight + 'px';
-                    }
-                });
-            }
-        }
-        
         // Dashboard -> Vehicle Page filtering
         document.querySelectorAll('.distribution-item-reimagined').forEach(item => {
             const statusFilter = item.dataset.statusFilter;
@@ -2706,77 +2884,15 @@ function attachEventListeners() {
                 }
             });
         });
-        document.getElementById('vehicle-form')?.addEventListener('submit', handleVehicleFormSubmit);
-        document.getElementById('customer-form')?.addEventListener('submit', handleCustomerFormSubmit);
-        document.getElementById('rental-form')?.addEventListener('submit', handleRentalFormSubmit);
-        
-        // --- MODAL-SPECIFIC EVENT LISTENERS ---
-        // RENTAL MODAL: Customer Type Radio Buttons
-        if (state.isRentalModalOpen) {
-            console.log('Rental modal is open, attaching customer type listeners...');
-            document.querySelectorAll('input[name="customerType"]').forEach(radio => {
-                console.log('Attaching listener to radio:', radio);
-                radio.addEventListener('change', (e) => {
-                    console.log('Customer type changed to:', e.target.value);
-                    const customerType = e.target.value;
-                    const existingSection = document.getElementById('existing-customer-section');
-                    const newSection = document.getElementById('new-customer-section');
-                    
-                    console.log('Found sections:', {
-                        existing: existingSection,
-                        new: newSection
-                    });
-                    
-                    if (customerType === 'existing') {
-                        console.log('Showing existing customer section');
-                        if (existingSection) existingSection.style.display = 'flex';
-                        if (newSection) newSection.style.display = 'none';
-                    } else if (customerType === 'new') {
-                        console.log('Showing new customer section');
-                        if (existingSection) existingSection.style.display = 'none';
-                        if (newSection) {
-                            // Force CSS override with !important equivalent
-                            newSection.style.setProperty('display', 'block', 'important');
-                            newSection.style.setProperty('visibility', 'visible', 'important');
-                            newSection.style.setProperty('opacity', '1', 'important');
-                            newSection.style.setProperty('height', 'auto', 'important');
-                            console.log('New section display set to:', newSection.style.display);
-                            console.log('New section is visible:', newSection.offsetHeight > 0);
-                        }
-                    }
-                });
-            });
-        }
-        
-        // RESERVATION MODAL: Customer Type Radio Buttons  
-        if (state.isReservationModalOpen) {
-            console.log('Reservation modal is open, attaching customer type listeners...');
-            document.querySelectorAll('input[name="customerType"][id^="res-"]').forEach(radio => {
-                console.log('Attaching listener to reservation radio:', radio);
-                radio.addEventListener('change', (e) => {
-                    console.log('Reservation customer type changed to:', e.target.value);
-                    const value = e.target.value;
-                    const existingSection = document.getElementById('res-existing-customer-section');
-                    const newSection = document.getElementById('res-new-customer-section');
-                    const customerSelect = document.getElementById('res-customer-id-select');
-                    const newName = document.getElementById('res-new-customer-name');
-                    const newPhone = document.getElementById('res-new-customer-phone');
-                    
-                    existingSection.style.display = value === 'existing' ? 'flex' : 'none';
-                    newSection.style.display = value === 'new' ? 'block' : 'none';
-                    customerSelect.required = value === 'existing';
-                    newName.required = value === 'new';
-                    newPhone.required = value === 'new';
-                });
-            });
-        }
-        
-        document.getElementById('check-in-form')?.addEventListener('submit', handleCheckInFormSubmit);
-        document.getElementById('rental-edit-form')?.addEventListener('submit', handleRentalEditFormSubmit);
-        document.getElementById('reservation-form')?.addEventListener('submit', handleReservationFormSubmit);
-        document.getElementById('reservation-edit-form')?.addEventListener('submit', handleReservationEditFormSubmit);
-        document.getElementById('maintenance-form')?.addEventListener('submit', handleMaintenanceFormSubmit);
-        document.getElementById('maintenance-edit-form')?.addEventListener('submit', handleMaintenanceEditFormSubmit);
+        (_z = document.getElementById('vehicle-form')) === null || _z === void 0 ? void 0 : _z.addEventListener('submit', handleVehicleFormSubmit);
+        (_0 = document.getElementById('customer-form')) === null || _0 === void 0 ? void 0 : _0.addEventListener('submit', handleCustomerFormSubmit);
+        (_1 = document.getElementById('rental-form')) === null || _1 === void 0 ? void 0 : _1.addEventListener('submit', handleRentalFormSubmit);
+        (_2 = document.getElementById('check-in-form')) === null || _2 === void 0 ? void 0 : _2.addEventListener('submit', handleCheckInFormSubmit);
+        (_3 = document.getElementById('rental-edit-form')) === null || _3 === void 0 ? void 0 : _3.addEventListener('submit', handleRentalEditFormSubmit);
+        (_4 = document.getElementById('reservation-form')) === null || _4 === void 0 ? void 0 : _4.addEventListener('submit', handleReservationFormSubmit);
+        (_5 = document.getElementById('reservation-edit-form')) === null || _5 === void 0 ? void 0 : _5.addEventListener('submit', handleReservationEditFormSubmit);
+        (_6 = document.getElementById('maintenance-form')) === null || _6 === void 0 ? void 0 : _6.addEventListener('submit', handleMaintenanceFormSubmit);
+        (_7 = document.getElementById('maintenance-edit-form')) === null || _7 === void 0 ? void 0 : _7.addEventListener('submit', handleMaintenanceEditFormSubmit);
         // Close modal listeners for buttons with data-modal-id
         document.querySelectorAll('.close-modal-btn, .modal-footer .btn-secondary').forEach(btn => {
             const modalIdWithSuffix = btn.dataset.modalId;
@@ -2817,17 +2933,17 @@ function attachEventListeners() {
             const searchTerm = e.target.value;
             setState({ searchTerm });
         };
-        document.getElementById('vehicle-search')?.addEventListener('input', handleSearch);
-        document.getElementById('customer-search')?.addEventListener('input', handleSearch);
-        document.getElementById('rental-search')?.addEventListener('input', handleSearch);
-        document.getElementById('reservation-search')?.addEventListener('input', handleSearch);
-        document.getElementById('maintenance-search')?.addEventListener('input', handleSearch);
+        (_8 = document.getElementById('vehicle-search')) === null || _8 === void 0 ? void 0 : _8.addEventListener('input', handleSearch);
+        (_9 = document.getElementById('customer-search')) === null || _9 === void 0 ? void 0 : _9.addEventListener('input', handleSearch);
+        (_10 = document.getElementById('rental-search')) === null || _10 === void 0 ? void 0 : _10.addEventListener('input', handleSearch);
+        (_11 = document.getElementById('reservation-search')) === null || _11 === void 0 ? void 0 : _11.addEventListener('input', handleSearch);
+        (_12 = document.getElementById('maintenance-search')) === null || _12 === void 0 ? void 0 : _12.addEventListener('input', handleSearch);
         // Clear Maintenance Filter Button
-        document.getElementById('clear-maintenance-filter')?.addEventListener('click', () => {
+        (_13 = document.getElementById('clear-maintenance-filter')) === null || _13 === void 0 ? void 0 : _13.addEventListener('click', () => {
             setState({ searchTerm: '' });
         });
         // Vehicle Page Expiring Filter Button
-        document.getElementById('filter-expiring-btn')?.addEventListener('click', () => {
+        (_14 = document.getElementById('filter-expiring-btn')) === null || _14 === void 0 ? void 0 : _14.addEventListener('click', () => {
             setState({ filterExpiring: !state.filterExpiring });
         });
         // Rental Modal Customer Type Toggle
@@ -2854,7 +2970,22 @@ function attachEventListeners() {
                 setState({ rentalFormCustomerType: value });
             });
         });
-        // REMOVED: Global reservation customer type listeners - now handled in modal-specific section above
+        // Reservation Modal Customer Type Toggle
+        document.querySelectorAll('input[name="customerType"][id^="res-"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const value = e.target.value;
+                const existingSection = document.getElementById('res-existing-customer-section');
+                const newSection = document.getElementById('res-new-customer-section');
+                const customerSelect = document.getElementById('res-customer-id-select');
+                const newName = document.getElementById('res-new-customer-name');
+                const newPhone = document.getElementById('res-new-customer-phone');
+                existingSection.style.display = value === 'existing' ? 'flex' : 'none';
+                newSection.style.display = value === 'new' ? 'block' : 'none';
+                customerSelect.required = value === 'existing';
+                newName.required = value === 'new';
+                newPhone.required = value === 'new';
+            });
+        });
         // Auto-calculate next maintenance date/km
         const maintenanceKmInput = document.getElementById('maintenance-km');
         const maintenanceDateInput = document.getElementById('maintenance-date');
@@ -2870,8 +3001,8 @@ function attachEventListeners() {
                 nextDateInput.value = nextDate.toISOString().split('T')[0];
             }
         };
-        maintenanceKmInput?.addEventListener('input', updateNextMaintenance);
-        maintenanceDateInput?.addEventListener('input', updateNextMaintenance);
+        maintenanceKmInput === null || maintenanceKmInput === void 0 ? void 0 : maintenanceKmInput.addEventListener('input', updateNextMaintenance);
+        maintenanceDateInput === null || maintenanceDateInput === void 0 ? void 0 : maintenanceDateInput.addEventListener('input', updateNextMaintenance);
         // console.log('Event listeners attached successfully.');
     }
     catch (error) {
@@ -2916,7 +3047,7 @@ function handleVehicleFormSubmit(e) {
                 vehicleDataUpdate.licenseFile = licenseFile.name;
                 vehicleDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
-            vehiclesData[state.editingVehicleIndex] = { ...originalVehicle, ...vehicleDataUpdate };
+            vehiclesData[state.editingVehicleIndex] = Object.assign(Object.assign({}, originalVehicle), vehicleDataUpdate);
         }
         else {
             // Adding new vehicle
@@ -2976,7 +3107,7 @@ function handleCustomerFormSubmit(e) {
                 customerDataUpdate.licenseFile = licenseFile.name;
                 customerDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
-            customersData[state.editingCustomerIndex] = { ...originalCustomer, ...customerDataUpdate };
+            customersData[state.editingCustomerIndex] = Object.assign(Object.assign({}, originalCustomer), customerDataUpdate);
         }
         else {
             // Adding new customer
@@ -2988,11 +3119,7 @@ function handleCustomerFormSubmit(e) {
                 customerDataUpdate.licenseFile = licenseFile.name;
                 customerDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
-            const newCustomer = {
-                id: Date.now(),
-                rentals: [],
-                ...customerDataUpdate
-            };
+            const newCustomer = Object.assign({ id: Date.now(), rentals: [] }, customerDataUpdate);
             logActivity('fa-user-plus', `<strong>${newCustomer.name}</strong> adında yeni müşteri kaydedildi.`);
             customersData.unshift(newCustomer);
         }
@@ -3006,24 +3133,6 @@ function handleCustomerFormSubmit(e) {
         console.error("!!! HATA: handleCustomerFormSubmit içinde:", error);
     }
 }
-
-// Global function for customer type toggle
-window.toggleCustomerSections = function(customerType) {
-    const existingSection = document.getElementById('existing-customer-section');
-    const newSection = document.getElementById('new-customer-section');
-    
-    if (customerType === 'existing') {
-        if (existingSection) existingSection.style.display = 'flex';
-        if (newSection) newSection.style.display = 'none';
-    } else if (customerType === 'new') {
-        if (existingSection) existingSection.style.display = 'none';
-        if (newSection) {
-            newSection.style.display = 'block';
-            newSection.style.visibility = 'visible';
-        }
-    }
-};
-
 function handleRentalEditFormSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -3054,7 +3163,7 @@ function handleRentalEditFormSubmit(e) {
             rentalDataUpdate.invoiceFile = invoiceFile.name;
             rentalDataUpdate.invoiceFileUrl = URL.createObjectURL(invoiceFile);
         }
-        rentalsData[rentalIndex] = { ...originalRental, ...rentalDataUpdate };
+        rentalsData[rentalIndex] = Object.assign(Object.assign({}, originalRental), rentalDataUpdate);
         setState({ isRentalEditModalOpen: false, editingRentalId: null });
         showToast('Kiralama kaydı güncellendi.', 'success');
     }
@@ -3072,15 +3181,7 @@ function handleReservationEditFormSubmit(e) {
         if (resIndex === -1)
             return;
         const originalReservation = reservationsData[resIndex];
-        const updatedReservation = {
-            ...originalReservation,
-            vehiclePlate: formData.get('vehiclePlate'),
-            customerId: parseInt(formData.get('customerId'), 10),
-            startDate: formData.get('startDate'),
-            endDate: formData.get('endDate'),
-            deliveryLocation: formData.get('deliveryLocation'),
-            notes: formData.get('notes') || null,
-        };
+        const updatedReservation = Object.assign(Object.assign({}, originalReservation), { vehiclePlate: formData.get('vehiclePlate'), customerId: parseInt(formData.get('customerId'), 10), startDate: formData.get('startDate'), endDate: formData.get('endDate'), deliveryLocation: formData.get('deliveryLocation'), notes: formData.get('notes') || null });
         reservationsData[resIndex] = updatedReservation;
         setState({ isReservationEditModalOpen: false, editingReservationId: null });
         showToast('Rezervasyon güncellendi.', 'success');
@@ -3148,18 +3249,16 @@ function handleRentalFormSubmit(e) {
         let customerPhone;
         const customerType = formData.get('customerType');
         if (customerType === 'new') {
-            // Create and add new customer - artık tüm alanları dolduruyoruz
+            // Create and add new customer
             const newCustomer = {
                 id: Date.now(), // Simple unique ID
                 name: formData.get('newCustomerName'),
                 tc: formData.get('newCustomerTc'),
                 phone: formData.get('newCustomerPhone'),
                 email: formData.get('newCustomerEmail'),
-                address: formData.get('newCustomerAddress') || '',
-                licenseNumber: formData.get('newCustomerLicenseNumber') || '',
-                licenseDate: formData.get('newCustomerLicenseDate') || '',
-                licenseExpiryDate: formData.get('newCustomerLicenseExpiry') || '',
-                birthDate: formData.get('newCustomerBirthDate') || '',
+                address: '',
+                licenseNumber: '',
+                licenseDate: '',
                 idFile: null, idFileUrl: null,
                 licenseFile: null, licenseFileUrl: null,
                 rentals: [],
@@ -3168,8 +3267,6 @@ function handleRentalFormSubmit(e) {
             customerId = newCustomer.id;
             customerName = newCustomer.name;
             customerPhone = newCustomer.phone;
-            
-            console.log("Yeni müşteri oluşturuldu:", newCustomer);
         }
         else {
             // Get existing customer
@@ -3209,16 +3306,7 @@ function handleRentalFormSubmit(e) {
         }
         // Close modal and re-render
         setState({ isRentalModalOpen: false });
-        
-        // If new customer was created, navigate to customers page to show it
-        if (customerType === 'new') {
-            showToast('Yeni müşteri eklendi ve kiralama başlatıldı! Müşteriler sayfasına yönlendiriliyorsunuz.', 'success');
-            setTimeout(() => {
-                setState({ activePage: 'customers' });
-            }, 1500); // 1.5 saniye bekle ki toast görünsün
-        } else {
-            showToast('Kiralama başarıyla başlatıldı.', 'success');
-        }
+        showToast('Kiralama başarıyla başlatıldı.', 'success');
     }
     catch (error) {
         console.error("!!! HATA: handleRentalFormSubmit içinde:", error);
@@ -3309,17 +3397,7 @@ function handleMaintenanceEditFormSubmit(e) {
         if (maintIndex === -1)
             return;
         const originalMaintenance = maintenanceData[maintIndex];
-        const updatedMaintenance = {
-            ...originalMaintenance,
-            vehiclePlate: formData.get('vehiclePlate'),
-            maintenanceDate: formData.get('maintenanceDate'),
-            maintenanceKm: parseInt(formData.get('maintenanceKm'), 10),
-            type: formData.get('type'),
-            cost: parseFloat(formData.get('cost')),
-            description: formData.get('description'),
-            nextMaintenanceKm: parseInt(formData.get('nextMaintenanceKm'), 10),
-            nextMaintenanceDate: formData.get('nextMaintenanceDate'),
-        };
+        const updatedMaintenance = Object.assign(Object.assign({}, originalMaintenance), { vehiclePlate: formData.get('vehiclePlate'), maintenanceDate: formData.get('maintenanceDate'), maintenanceKm: parseInt(formData.get('maintenanceKm'), 10), type: formData.get('type'), cost: parseFloat(formData.get('cost')), description: formData.get('description'), nextMaintenanceKm: parseInt(formData.get('nextMaintenanceKm'), 10), nextMaintenanceDate: formData.get('nextMaintenanceDate') });
         maintenanceData[maintIndex] = updatedMaintenance;
         setState({ isMaintenanceEditModalOpen: false, editingMaintenanceId: null });
         showToast('Bakım kaydı güncellendi.', 'success');
@@ -3329,7 +3407,22 @@ function handleMaintenanceEditFormSubmit(e) {
     }
 }
 function formatTimeAgo(date) {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    // Güvenli date parse
+    if (!date)
+        return "Bilinmiyor";
+    let parsedDate;
+    try {
+        parsedDate = date instanceof Date ? date : new Date(date);
+        // Invalid date kontrolü
+        if (isNaN(parsedDate.getTime())) {
+            return "Bilinmiyor";
+        }
+    }
+    catch (e) {
+        console.warn('formatTimeAgo: Date parse hatası:', date);
+        return "Bilinmiyor";
+    }
+    const seconds = Math.floor((new Date().getTime() - parsedDate.getTime()) / 1000);
     let interval = seconds / 31536000;
     if (interval > 1)
         return Math.floor(interval) + " yıl önce";
@@ -3349,11 +3442,16 @@ function formatTimeAgo(date) {
 }
 function generateRentalSummaryPDF(rental) {
     try {
+        // jsPDF kontrolü
+        if (!window.jspdf) {
+            showToast("PDF kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.", "error");
+            console.error("jsPDF bulunamadı. window.jspdf:", window.jspdf);
+            return;
+        }
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-        // --- USE DEFAULT FONTS (No font loading issues) ---
-        // Using jsPDF default fonts for reliability
-        doc.setFont('helvetica', 'normal'); // Default font
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        // Default font ayarla (built-in Helvetica)
+        doc.setFont('helvetica', 'normal');
         const customer = customersData.find(c => c.id === rental.customerId);
         const vehicle = vehiclesData.find(v => v.plate === rental.vehiclePlate);
         const formatDate = (dateInput) => {
@@ -3361,114 +3459,640 @@ function generateRentalSummaryPDF(rental) {
                 return 'Belirtilmemiş';
             return new Date(dateInput).toLocaleDateString('tr-TR');
         };
-        const formatKm = (km) => km ? km.toLocaleString('tr-TR') + ' km' : 'N/A';
-        const formatCost = (cost) => cost ? `₺${cost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Hesaplanmadı';
+        const formatKm = (km) => km ? km.toLocaleString('tr-TR') : '0';
+        const formatPrice = (price) => '₺' + price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const startDate = rental.startDate ? new Date(rental.startDate) : null;
         const endDate = rental.endDate ? new Date(rental.endDate) : null;
-        let totalDays = 'N/A';
+        let totalDays = 0;
         if (startDate && endDate) {
             const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-            totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24))).toString();
+            totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
-        const totalKm = (rental.endKm && rental.startKm) ? (rental.endKm - rental.startKm).toLocaleString('tr-TR') + ' km' : 'N/A';
-        const primaryColor = '#3b82f6';
-        const textColor = '#1e293b';
-        const mutedColor = '#64748b';
-        const lightBg = '#f1f5f9';
-        const white = '#ffffff';
+        const usedKm = (rental.endKm && rental.startKm) ? (rental.endKm - rental.startKm) : 0;
+        // Fiyat hesaplamaları
+        const dailyRate = rental.price || 0;
+        const kmLimit = 250; // günlük km limiti
+        const totalKmLimit = kmLimit * totalDays;
+        const kmExcess = Math.max(0, usedKm - totalKmLimit);
+        const kmExcessCost = kmExcess * 3; // 3 TL/km
+        const extraServices = 150; // Sabit ek hizmet ücreti
+        const subtotal = (dailyRate * totalDays);
+        const totalCost = subtotal + kmExcessCost + extraServices;
+        // Renkler - Modern gradient paleti
+        const primaryBlue = [41, 98, 255]; // #2962FF - Parlak mavi
+        const darkBlue = [13, 71, 161]; // #0D47A1 - Koyu mavi
+        const accentOrange = [255, 111, 0]; // #FF6F00 - Turuncu
+        const successGreen = [0, 200, 83]; // #00C853 - Yeşil
+        const textDark = [33, 33, 33];
+        const textGray = [97, 97, 97];
+        const lightGray = [245, 245, 245];
+        const white = [255, 255, 255];
+        const pageWidth = 210;
+        const pageHeight = 297;
         const margin = 15;
-        const contentWidth = 210 - (margin * 2);
-        let y = 20;
-        const getImageFormat = (base64) => {
-            if (!base64 || !base64.startsWith('data:image'))
-                return 'PNG';
-            const match = base64.match(/^data:image\/(png|jpe?g);base64,/);
-            return match ? match[1].replace('jpeg', 'JPEG').toUpperCase() : 'PNG';
-        };
-        if (state.settings.pdfSettings.showBackground && state.settings.companyInfo.pdfBackground) {
-            try {
-                doc.addImage(state.settings.companyInfo.pdfBackground, getImageFormat(state.settings.companyInfo.pdfBackground), 0, 0, 210, 297, '', 'FAST');
-            }
-            catch (e) {
-                console.error("PDF Arka Planı eklenirken hata oluştu:", e);
-                doc.setFillColor(lightBg);
-                doc.rect(0, 0, 210, 297, 'F');
-            }
+        const contentWidth = pageWidth - (margin * 2);
+        let y = 0;
+        // ========== HEADER SECTION - Gradient Background ==========
+        // Gradient effect (yukarıdan aşağıya mavi tonları)
+        for (let i = 0; i < 50; i++) {
+            const ratio = i / 50;
+            const r = primaryBlue[0] + (darkBlue[0] - primaryBlue[0]) * ratio;
+            const g = primaryBlue[1] + (darkBlue[1] - primaryBlue[1]) * ratio;
+            const b = primaryBlue[2] + (darkBlue[2] - primaryBlue[2]) * ratio;
+            doc.setFillColor(r, g, b);
+            doc.rect(0, i * 1.4, pageWidth, 1.5, 'F');
         }
-        else {
-            doc.setFillColor(lightBg);
-            doc.rect(0, 0, 210, 297, 'F');
-        }
+        y = 25;
+        // Logo placeholder (sol üst - beyaz kutu)
         if (state.settings.pdfSettings.showLogo && state.settings.companyInfo.logo) {
             try {
-                doc.addImage(state.settings.companyInfo.logo, getImageFormat(state.settings.companyInfo.logo), margin, y - 8, 40, 15);
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(margin, 12, 45, 20, 3, 3, 'F');
+                const imgFormat = state.settings.companyInfo.logo.match(/^data:image\/(png|jpe?g);base64,/) ?
+                    (state.settings.companyInfo.logo.includes('png') ? 'PNG' : 'JPEG') : 'PNG';
+                doc.addImage(state.settings.companyInfo.logo, imgFormat, margin + 2, 14, 41, 16);
             }
             catch (e) {
-                console.error("PDF Logosu eklenirken hata oluştu:", e);
+                console.error("Logo eklenemedi:", e);
             }
         }
+        // Sözleşme numarası (sağ üst - turuncu badge)
+        doc.setFillColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+        doc.roundedRect(pageWidth - margin - 45, 12, 45, 10, 5, 5, 'F');
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18);
-        doc.setTextColor(textColor);
-        doc.text(state.settings.companyInfo.name, margin, y);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`SÖZLEŞME #${rental.id}`, pageWidth - margin - 22.5, 18.5, { align: 'center' });
+        // Ana başlık
+        doc.setFontSize(32);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('KİRALAMA ÖZETİ', pageWidth / 2, y, { align: 'center' });
+        y += 10;
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'normal');
+        doc.text(state.settings.companyInfo.name.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+        y += 3;
         doc.setFontSize(10);
-        doc.setTextColor(mutedColor);
-        doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 210 - margin, y - 5, { align: 'right' });
-        doc.text(`Kayıt No: #${rental.id}`, 210 - margin, y, { align: 'right' });
+        doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, pageWidth / 2, y, { align: 'center' });
         y += 15;
-        doc.setDrawColor(primaryColor);
-        doc.setLineWidth(1);
-        doc.line(margin, y, 210 - margin, y);
-        y += 15;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(24);
-        doc.setTextColor(primaryColor);
-        doc.text("ARAÇ KİRALAMA RAPORU", 105, y, { align: 'center' });
-        y += 20;
-        const drawSection = (title, data, icon) => {
-            const sectionHeight = (data.length * 8) + 25;
-            doc.setFillColor(white);
-            doc.roundedRect(margin, y, contentWidth, sectionHeight, 5, 5, 'F');
-            doc.setFillColor(primaryColor);
-            doc.roundedRect(margin, y, contentWidth, 12, 5, 5, 'F');
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
-            doc.setTextColor(white);
-            doc.text(icon, margin + 7, y + 8.5);
-            doc.text(title, margin + 15, y + 8.5);
-            y += 20;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(11);
-            data.forEach(item => {
-                doc.setTextColor(mutedColor);
-                doc.text(item.label, margin + 10, y);
-                doc.setTextColor(textColor);
-                doc.setFont('helvetica', 'bold');
-                doc.text(item.value, margin + 60, y);
-                y += 8;
-            });
-            y += 15;
-        };
-        drawSection('Müşteri Bilgileri', [{ label: 'Ad Soyad:', value: customer?.name || 'N/A' }, { label: 'Telefon:', value: customer?.phone || 'N/A' }, { label: 'E-posta:', value: customer?.email || 'N/A' }], '👤');
-        drawSection('Araç Bilgileri', [{ label: 'Plaka:', value: vehicle?.plate || 'N/A' }, { label: 'Marka/Model:', value: vehicle?.brand || 'N/A' }, { label: 'Başlangıç KM:', value: formatKm(rental.startKm) }, { label: 'Bitiş KM:', value: formatKm(rental.endKm) }], '🚗');
-        drawSection('Kiralama Bilgileri', [{ label: 'Başlangıç Tarihi:', value: formatDate(rental.startDate) }, { label: 'Bitiş Tarihi:', value: formatDate(rental.endDate) }, { label: 'Toplam Gün:', value: totalDays }, { label: 'Toplam KM:', value: totalKm }, { label: 'Ücret:', value: formatCost(rental.totalCost) }], '📅');
-        if (state.settings.pdfSettings.showFooter) {
-            const pageHeight = doc.internal.pageSize.height;
-            doc.setDrawColor('#e2e8f0');
-            doc.line(margin, pageHeight - 28, 210 - margin, pageHeight - 28);
-            doc.setFont('helvetica', 'normal');
+        // ========== BODY - Beyaz background ==========
+        doc.setFillColor(250, 250, 250);
+        doc.rect(0, y, pageWidth, pageHeight - y, 'F');
+        y += 12;
+        // ========== Helper Functions ==========
+        const drawCard = (title, iconText, iconBg, contentHeight, drawContent) => {
+            const cardStartY = y;
+            // Card shadow effect
+            doc.setFillColor(200, 200, 200);
+            doc.roundedRect(margin + 1, cardStartY + 1, contentWidth, contentHeight, 4, 4, 'F');
+            // Card background
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, cardStartY, contentWidth, contentHeight, 4, 4, 'F');
+            // Card border
+            doc.setDrawColor(230, 230, 230);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(margin, cardStartY, contentWidth, contentHeight, 4, 4, 'S');
+            // Üst renkli çizgi
+            doc.setFillColor(iconBg[0], iconBg[1], iconBg[2]);
+            doc.rect(margin, cardStartY, contentWidth, 3, 'F');
+            // Icon badge (sol üst)
+            doc.setFillColor(iconBg[0], iconBg[1], iconBg[2]);
+            doc.roundedRect(margin + 5, cardStartY + 8, 12, 8, 2, 2, 'F');
             doc.setFontSize(9);
-            doc.setTextColor(mutedColor);
-            doc.text("Bizi tercih ettiğiniz için teşekkür ederiz.", 105, pageHeight - 22, { align: 'center' });
-            doc.text(`${state.settings.companyInfo.name} | ${state.settings.companyInfo.address} | Tel: ${state.settings.companyInfo.phone}`, 105, pageHeight - 18, { align: 'center' });
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text(iconText, margin + 11, cardStartY + 13.5, { align: 'center' });
+            // Card title
+            doc.setFontSize(13);
+            doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, margin + 20, cardStartY + 13);
+            y = cardStartY + 20;
+            drawContent();
+            y = cardStartY + contentHeight + 8;
+        };
+        const drawInfoRow = (label, value, xOffset = 0, isHighlight = false) => {
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text(label, margin + 8 + xOffset, y);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            if (isHighlight) {
+                doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            }
+            else {
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            }
+            doc.text(value, margin + 8 + xOffset, y + 5);
+            y += 12;
+        };
+        // ========== ARAÇ BİLGİLERİ CARD ==========
+        drawCard('ARAÇ BİLGİLERİ', '🚗', primaryBlue, 60, () => {
+            var _a, _b, _c;
+            const col2X = contentWidth / 2;
+            // Sol kolon
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('MARKA', ((_a = vehicle === null || vehicle === void 0 ? void 0 : vehicle.brand) === null || _a === void 0 ? void 0 : _a.split(' ')[0]) || 'N/A', 0, false);
+            y = tempY + 12;
+            drawInfoRow('MODEL', ((_b = vehicle === null || vehicle === void 0 ? void 0 : vehicle.brand) === null || _b === void 0 ? void 0 : _b.split(' ').slice(1).join(' ')) || 'N/A', 0, false);
+            y = tempY + 24;
+            drawInfoRow('YIL', ((_c = vehicle === null || vehicle === void 0 ? void 0 : vehicle.year) === null || _c === void 0 ? void 0 : _c.toString()) || '2023', 0, false);
+            // Sağ kolon
+            y = tempY;
+            drawInfoRow('PLAKA', (vehicle === null || vehicle === void 0 ? void 0 : vehicle.plate) || 'N/A', col2X, true);
+            y = tempY + 12;
+            drawInfoRow('RENK', (vehicle === null || vehicle === void 0 ? void 0 : vehicle.color) || 'Belirtilmemiş', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('YAKIT', (vehicle === null || vehicle === void 0 ? void 0 : vehicle.fuelType) || 'Benzin', col2X, false);
+            y = tempY + 36;
+        });
+        // ========== MÜŞTERİ BİLGİLERİ CARD ==========
+        drawCard('MÜŞTERİ BİLGİLERİ', '👤', successGreen, 60, () => {
+            const col2X = contentWidth / 2;
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('AD SOYAD', (customer === null || customer === void 0 ? void 0 : customer.name) || 'N/A', 0, true);
+            y = tempY + 12;
+            drawInfoRow('TELEFON', (customer === null || customer === void 0 ? void 0 : customer.phone) || 'N/A', 0, false);
+            y = tempY + 24;
+            drawInfoRow('E-POSTA', (customer === null || customer === void 0 ? void 0 : customer.email) || 'Belirtilmemiş', 0, false);
+            y = tempY;
+            drawInfoRow('TC KİMLİK NO', (customer === null || customer === void 0 ? void 0 : customer.tc) || 'N/A', col2X, false);
+            y = tempY + 12;
+            drawInfoRow('EHLİYET NO', (customer === null || customer === void 0 ? void 0 : customer.licenseNumber) || 'N/A', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('ADRES', (customer === null || customer === void 0 ? void 0 : customer.address) || 'Belirtilmemiş', col2X, false);
+            y = tempY + 36;
+        });
+        // ========== KİRALAMA BİLGİLERİ CARD ==========
+        drawCard('KİRALAMA DETAYLARI', '📋', accentOrange, 95, () => {
+            const col2X = contentWidth / 2;
+            // Durum badge
+            const statusText = rental.status === 'active' ? 'AKTİF' : 'TAMAMLANDI';
+            const statusColor = rental.status === 'active' ? successGreen : textGray;
+            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.roundedRect(pageWidth - margin - 35, y - 5, 30, 7, 3, 3, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(statusText, pageWidth - margin - 20, y - 0.5, { align: 'center' });
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('BAŞLANGIÇ TARİHİ', formatDate(rental.startDate), 0, false);
+            y = tempY + 12;
+            drawInfoRow('BİTİŞ TARİHİ', formatDate(rental.endDate), 0, false);
+            y = tempY + 24;
+            drawInfoRow('TOPLAM GÜN', totalDays.toString() + ' gün', 0, true);
+            y = tempY;
+            drawInfoRow('ALIŞ YERİ', rental.pickupLocation || 'İstanbul', col2X, false);
+            y = tempY + 12;
+            drawInfoRow('İADE YERİ', rental.returnLocation || 'İstanbul', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('GÜNLİK ÜCRET', formatPrice(dailyRate), col2X, false);
+            y = tempY + 40;
+            // KM Bilgileri - Görsel kutular
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            doc.text('KİLOMETRE DETAYLARI', margin + 8, y);
+            y += 8;
+            const kmBoxWidth = (contentWidth - 30) / 3;
+            const kmBoxHeight = 18;
+            // Teslim KM
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.roundedRect(margin + 8, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            doc.setDrawColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.setLineWidth(1);
+            doc.roundedRect(margin + 8, y, kmBoxWidth, kmBoxHeight, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Teslim KM', margin + 8 + kmBoxWidth / 2, y + 6, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.text(formatKm(rental.startKm), margin + 8 + kmBoxWidth / 2, y + 14, { align: 'center' });
+            // Ok işareti
+            doc.setFontSize(16);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text('→', margin + 8 + kmBoxWidth + 8, y + 11, { align: 'center' });
+            // İade KM
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.roundedRect(margin + 8 + kmBoxWidth + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            doc.setDrawColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+            doc.roundedRect(margin + 8 + kmBoxWidth + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.text('İade KM', margin + 8 + kmBoxWidth + 16 + kmBoxWidth / 2, y + 6, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+            doc.text(formatKm(rental.endKm), margin + 8 + kmBoxWidth + 16 + kmBoxWidth / 2, y + 14, { align: 'center' });
+            // Eşittir işareti
+            doc.setFontSize(16);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text('=', margin + 8 + (kmBoxWidth + 16) * 2 + 8, y + 11, { align: 'center' });
+            // Kullanılan KM
+            doc.setFillColor(successGreen[0], successGreen[1], successGreen[2]);
+            doc.roundedRect(margin + 8 + (kmBoxWidth + 16) * 2 + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            doc.setFontSize(8);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Kullanılan KM', margin + 8 + (kmBoxWidth + 16) * 2 + 16 + kmBoxWidth / 2, y + 6, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(usedKm.toLocaleString('tr-TR'), margin + 8 + (kmBoxWidth + 16) * 2 + 16 + kmBoxWidth / 2, y + 14, { align: 'center' });
+            y += kmBoxHeight + 5;
+        });
+        // ========== FİYATLANDIRMA CARD ==========
+        drawCard('FİYATLANDIRMA', '💰', darkBlue, 70, () => {
+            // Tablo başlıkları
+            doc.setDrawColor(230, 230, 230);
+            doc.setLineWidth(0.3);
+            const labelX = margin + 8;
+            const valueX = pageWidth - margin - 8;
+            // Satırlar
+            const rows = [
+                { label: 'Günlük Kira Ücreti', value: formatPrice(dailyRate), bold: false },
+                { label: `Kiralama Süresi (${totalDays} gün)`, value: formatPrice(subtotal), bold: false },
+                { label: `KM Limit (${totalKmLimit} km dahil)`, value: '₺0.00', bold: false },
+                { label: `KM Aşımı (${kmExcess} km × ₺3)`, value: formatPrice(kmExcessCost), bold: false },
+                { label: 'Ek Hizmetler', value: formatPrice(extraServices), bold: false }
+            ];
+            rows.forEach((row, index) => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+                doc.text(row.label, labelX, y);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+                doc.text(row.value, valueX, y, { align: 'right' });
+                y += 8;
+                if (index < rows.length - 1) {
+                    doc.line(labelX, y - 3, valueX, y - 3);
+                }
+            });
+            y += 2;
+            // Toplam - Vurgulu
+            doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.rect(margin + 8, y - 3, contentWidth - 16, 12, 'F');
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('TOPLAM TUTAR', labelX + 3, y + 4);
+            doc.setFontSize(15);
+            doc.text(formatPrice(totalCost), valueX - 3, y + 4, { align: 'right' });
+            y += 12;
+        });
+        // ========== FOOTER ==========
+        if (state.settings.pdfSettings.showFooter) {
+            y = pageHeight - 25;
+            // Footer arka plan
+            doc.setFillColor(darkBlue[0], darkBlue[1], darkBlue[2]);
+            doc.rect(0, y, pageWidth, 25, 'F');
+            y += 8;
+            // Teşekkür mesajı
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz!', pageWidth / 2, y, { align: 'center' });
+            y += 6;
+            // Şirket bilgileri
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${state.settings.companyInfo.name} | ${state.settings.companyInfo.address}`, pageWidth / 2, y, { align: 'center' });
+            y += 5;
+            doc.text(`Tel: ${state.settings.companyInfo.phone} | Web: www.rehberotomotiv.com`, pageWidth / 2, y, { align: 'center' });
         }
-        doc.output('dataurlnewwindow');
+        // Sözleşme numarası (sağ üst)
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'S');
+        doc.setFontSize(9);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`#${rental.id}`, 200 - margin - 25, y + 5.5, { align: 'center' });
+        y += 15;
+        // Logo (sol üstte)
+        if (state.settings.pdfSettings.showLogo && state.settings.companyInfo.logo) {
+            try {
+                const imgFormat = state.settings.companyInfo.logo.match(/^data:image\/(png|jpe?g);base64,/) ?
+                    (state.settings.companyInfo.logo.includes('png') ? 'PNG' : 'JPEG') : 'PNG';
+                doc.addImage(state.settings.companyInfo.logo, imgFormat, margin, y, 50, 30);
+            }
+            catch (e) {
+                console.error("Logo eklenemedi:", e);
+            }
+        }
+        y += 35;
+        // ESKİ KOD SİLİNDİ - YENİ TASARIM YUKARI
+        const startY = y;
+        // Card arka plan
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'F'); // Yükseklik sonra ayarlanacak
+        doc.setDrawColor(224, 224, 224);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'S');
+        // Üst mavi çizgi
+        doc.setDrawColor(26, 35, 126);
+        doc.setLineWidth(1);
+        doc.line(margin, y, margin + contentWidth, y);
+        y += 8;
+        // Card başlığı
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 35, 126);
+        doc.text(`${icon} ${title}`, margin + 5, y);
+        y += 8;
+        // İçerik
+        content();
+        const cardHeight = y - startY + 3;
+        // Card'ı tamamla (yükseklik düzeltmesi)
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'S');
+        doc.setDrawColor(26, 35, 126);
+        doc.setLineWidth(1);
+        doc.line(margin, startY, margin + contentWidth, startY);
+        y += 5;
     }
-    catch (error) {
-        console.error("PDF oluşturma sırasında kritik bir hata oluştu:", error);
-        showToast("PDF oluşturulamadı. Lütfen konsolu kontrol edin.", "error");
+    finally // ARAÇ BİLGİLERİ CARD
+     { }
+    ;
+    // ARAÇ BİLGİLERİ CARD
+    drawCard('ARAÇ BİLGİLERİ', '🚗', () => {
+        var _a, _b;
+        const col1X = margin + 8;
+        const col2X = margin + contentWidth / 2 + 4;
+        const labelSize = 9;
+        const valueSize = 11;
+        // Sol kolon
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('MARKA', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text(((_a = vehicle === null || vehicle === void 0 ? void 0 : vehicle.brand) === null || _a === void 0 ? void 0 : _a.split(' ')[0]) || 'N/A', col1X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('YIL', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text('2023', col1X, y);
+        // Sağ kolon (y'yi resetle)
+        y -= 17;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('MODEL', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text(((_b = vehicle === null || vehicle === void 0 ? void 0 : vehicle.brand) === null || _b === void 0 ? void 0 : _b.split(' ').slice(1).join(' ')) || 'N/A', col2X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('PLAKA', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text((vehicle === null || vehicle === void 0 ? void 0 : vehicle.plate) || 'N/A', col2X, y);
+        y += 3;
+    });
+    // KİRALAYAN BİLGİLERİ CARD
+    drawCard('KİRALAYAN BİLGİLERİ', '👤', () => {
+        const col1X = margin + 8;
+        const col2X = margin + contentWidth / 2 + 4;
+        const labelSize = 9;
+        const valueSize = 11;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('AD SOYAD', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text((customer === null || customer === void 0 ? void 0 : customer.name) || 'N/A', col1X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('TC KİMLİK NO', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text((customer === null || customer === void 0 ? void 0 : customer.tc) || 'N/A', col1X, y);
+        y -= 17;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('TELEFON', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text((customer === null || customer === void 0 ? void 0 : customer.phone) || 'N/A', col2X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('EHLİYET NO', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text((customer === null || customer === void 0 ? void 0 : customer.licenseNumber) || 'N/A', col2X, y);
+        y += 3;
+    });
+    // KİRALAMA BİLGİLERİ CARD
+    drawCard('KİRALAMA BİLGİLERİ', '📋', () => {
+        // Durum badge
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(margin + contentWidth - 35, y - 5, 30, 6, 3, 3, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(margin + contentWidth - 35, y - 5, 30, 6, 3, 3, 'S');
+        doc.setFontSize(8);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(rental.status === 'active' ? 'AKTİF' : 'TAMAMLANDI', margin + contentWidth - 20, y - 1, { align: 'center' });
+        const col1X = margin + 8;
+        const col2X = margin + contentWidth / 2 + 4;
+        const labelSize = 9;
+        const valueSize = 11;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('ALIŞ TARİHİ', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatDate(rental.startDate), col1X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('ALIŞ YERİ', col1X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text('İstanbul', col1X, y);
+        y -= 17;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('İADE TARİHİ', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatDate(rental.endDate), col2X, y);
+        y += 7;
+        doc.setFontSize(labelSize);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text('İADE YERİ', col2X, y);
+        y += 5;
+        doc.setFontSize(valueSize);
+        doc.setTextColor(33, 33, 33);
+        doc.setFont('helvetica', 'bold');
+        doc.text('İstanbul', col2X, y);
+        y += 10;
+        // KM Bölümü başlığı
+        doc.setFontSize(11);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text('⚡ KİLOMETRE BİLGİLERİ', margin + 8, y);
+        y += 7;
+        // KM Kutuları
+        const kmBoxWidth = (contentWidth - 20) / 3 - 4;
+        const kmBoxStartX = margin + 8;
+        // Teslim Edilen KM
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(kmBoxStartX, y, kmBoxWidth, 15, 3, 3, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(kmBoxStartX, y, kmBoxWidth, 15, 3, 3, 'S');
+        doc.setFontSize(8);
+        doc.setTextColor(97, 97, 97);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Teslim Edilen KM', kmBoxStartX + kmBoxWidth / 2, y + 5, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatKm(rental.startKm), kmBoxStartX + kmBoxWidth / 2, y + 12, { align: 'center' });
+        // Ok işareti
+        doc.setFontSize(16);
+        doc.setTextColor(117, 117, 117);
+        doc.text('→', kmBoxStartX + kmBoxWidth + 8, y + 10, { align: 'center' });
+        // Alınan KM
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(kmBoxStartX + kmBoxWidth + 12, y, kmBoxWidth, 15, 3, 3, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(kmBoxStartX + kmBoxWidth + 12, y, kmBoxWidth, 15, 3, 3, 'S');
+        doc.setFontSize(8);
+        doc.setTextColor(97, 97, 97);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Alınan KM', kmBoxStartX + kmBoxWidth + 12 + kmBoxWidth / 2, y + 5, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(formatKm(rental.endKm), kmBoxStartX + kmBoxWidth + 12 + kmBoxWidth / 2, y + 12, { align: 'center' });
+        // Eşittir işareti
+        doc.setFontSize(16);
+        doc.setTextColor(117, 117, 117);
+        doc.text('=', kmBoxStartX + (kmBoxWidth + 12) * 2 - 4, y + 10, { align: 'center' });
+        // Kullanılan KM
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(kmBoxStartX + (kmBoxWidth + 12) * 2, y, kmBoxWidth, 15, 3, 3, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(kmBoxStartX + (kmBoxWidth + 12) * 2, y, kmBoxWidth, 15, 3, 3, 'S');
+        doc.setFontSize(8);
+        doc.setTextColor(97, 97, 97);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Kullanılan KM', kmBoxStartX + (kmBoxWidth + 12) * 2 + kmBoxWidth / 2, y + 5, { align: 'center' });
+        doc.setFontSize(14);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(usedKm.toLocaleString('tr-TR'), kmBoxStartX + (kmBoxWidth + 12) * 2 + kmBoxWidth / 2, y + 12, { align: 'center' });
+        y += 18;
+    });
+    // FİYATLANDIRMA CARD
+    drawCard('FİYATLANDIRMA', '💰', () => {
+        const labelX = margin + 8;
+        const valueX = margin + contentWidth - 8;
+        // Tablo satırları
+        const rows = [
+            { label: 'Günlük Kira Bedeli', value: `₺${dailyRate.toLocaleString('tr-TR')}` },
+            { label: 'Kiralama Süresi', value: `${totalDays} gün` },
+            { label: 'KM Limit Aşımı', value: `₺${kmExcessCost.toLocaleString('tr-TR')}` },
+            { label: 'Ek Hizmetler', value: `₺${extraServices.toLocaleString('tr-TR')}` }
+        ];
+        doc.setFontSize(10);
+        rows.forEach((row, index) => {
+            doc.setTextColor(97, 97, 97);
+            doc.setFont('helvetica', 'normal');
+            doc.text(row.label, labelX, y);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(row.value, valueX, y, { align: 'right' });
+            y += 6;
+            // Ayırıcı çizgi (son satır hariç)
+            if (index < rows.length - 1) {
+                doc.setDrawColor(224, 224, 224);
+                doc.setLineWidth(0.2);
+                doc.line(labelX, y - 2, valueX, y - 2);
+            }
+        });
+        y += 3;
+        // Toplam
+        doc.setDrawColor(224, 224, 224);
+        doc.setLineWidth(0.3);
+        doc.line(labelX, y - 2, valueX, y - 2);
+        y += 3;
+        doc.setFontSize(13);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOPLAM TUTAR', labelX, y);
+        doc.text(`₺${totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, valueX, y, { align: 'right' });
+        y += 3;
+    });
+    // Footer
+    if (state.settings.pdfSettings.showFooter) {
+        y = 267 - 15;
+        doc.setFontSize(9);
+        doc.setTextColor(117, 117, 117);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`© 2025 ${state.settings.companyInfo.name.toUpperCase()} | Tüm hakları saklıdır.`, 100, y, { align: 'center' });
+        y += 4;
+        doc.text(`${state.settings.companyInfo.address} | ${state.settings.companyInfo.phone}`, 100, y, { align: 'center' });
     }
+    doc.output('dataurlnewwindow');
+}
+try { }
+catch (error) {
+    console.error("PDF oluşturma sırasında kritik bir hata oluştu:", error);
+    showToast("PDF oluşturulamadı. Lütfen konsolu kontrol edin.", "error");
 }
 /**
  * Ekranda geçici bir bildirim (toast) gösterir.
@@ -3506,6 +4130,7 @@ function showToast(message, type = 'success', duration = 4000) {
 }
 // Uygulama ilk yüklendiğinde verileri localStorage'dan yükleme fonksiyonu
 function loadDataFromLocalStorage() {
+    console.log('💾 loadDataFromLocalStorage() fonksiyonu çağrıldı');
     const savedData = localStorage.getItem('rehberOtomotivData');
     if (savedData) {
         try {
@@ -3519,14 +4144,41 @@ function loadDataFromLocalStorage() {
             if (appData.maintenanceData)
                 maintenanceData = appData.maintenanceData; // Tarih objesi yok
             if (appData.rentalsData) {
-                rentalsData = appData.rentalsData.map(r => ({ ...r, startDate: new Date(r.startDate), endDate: r.endDate ? new Date(r.endDate) : null }));
+                rentalsData = appData.rentalsData.map(r => (Object.assign(Object.assign({}, r), { startDate: new Date(r.startDate), endDate: r.endDate ? new Date(r.endDate) : null })));
             }
             if (appData.reservationsData) {
-                reservationsData = appData.reservationsData.map(r => ({ ...r, startDate: new Date(r.startDate), endDate: new Date(r.endDate) }));
+                reservationsData = appData.reservationsData.map(r => (Object.assign(Object.assign({}, r), { startDate: new Date(r.startDate), endDate: new Date(r.endDate) })));
             }
             // Aktiviteler, JSON'dan yüklenirken Date objesine geri çevrilmeli.
             if (appData.activitiesData && Array.isArray(appData.activitiesData)) {
-                activitiesData = appData.activitiesData.map(activity => activity && activity.time ? { ...activity, time: new Date(activity.time) } : activity).filter(Boolean); // Bozuk veya null kayıtları temizle
+                activitiesData = appData.activitiesData.map(activity => {
+                    if (!activity)
+                        return null;
+                    try {
+                        let parsedDate = new Date();
+                        // Önce time, sonra date kontrolü
+                        if (activity.time) {
+                            parsedDate = new Date(activity.time);
+                        }
+                        else if (activity.date) {
+                            parsedDate = new Date(activity.date);
+                        }
+                        // Geçersiz tarih kontrolü
+                        if (isNaN(parsedDate.getTime())) {
+                            console.warn('⚠️ Geçersiz aktivite tarihi:', activity);
+                            parsedDate = new Date();
+                        }
+                        return {
+                            icon: activity.icon || 'fa-solid fa-circle-info',
+                            message: activity.message || 'Bilinmeyen aktivite',
+                            time: parsedDate
+                        };
+                    }
+                    catch (e) {
+                        console.error('❌ Aktivite parse hatası:', activity, e);
+                        return null;
+                    }
+                }).filter(Boolean); // Bozuk veya null kayıtları temizle
             }
             // State'e ait verileri yükle
             if (appData.theme)
@@ -3535,8 +4187,8 @@ function loadDataFromLocalStorage() {
                 state.readNotifications = appData.readNotifications;
             // Ayarları birleştirerek yükle, böylece yeni eklenen ayarlar kaybolmaz
             if (appData.settings) {
-                state.settings = { ...state.settings, ...appData.settings };
-                state.settings.companyInfo = { ...state.settings.companyInfo, ...appData.settings.companyInfo };
+                state.settings = Object.assign(Object.assign({}, state.settings), appData.settings);
+                state.settings.companyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), appData.settings.companyInfo);
             }
         }
         catch (e) {
@@ -3550,90 +4202,86 @@ function loadDataFromLocalStorage() {
     }
 }
 // Otomatik Firebase senkronizasyonu
-async function autoSyncWithFirebase() {
-    if (!state.settings?.firebaseEnabled || !state.settings?.firebaseAutoSync) {
-        return;
-    }
-    try {
-        // Check if Firebase functions exist
-        if (typeof loadDataFromFirebase === 'function' && typeof initializeFirebase === 'function') {
-            const config = state.settings?.firebaseConfig;
-            if (config?.apiKey && config?.databaseURL) {
-                console.log('🔄 Otomatik Firebase senkronizasyonu başlatılıyor...');
-                // Initialize Firebase
-                initializeFirebase(config);
-                // Load data from Firebase
-                const data = await loadDataFromFirebase();
-                // Update local data if Firebase has data
-                if (data.vehiclesData)
-                    vehiclesData = data.vehiclesData;
-                if (data.customersData)
-                    customersData = data.customersData;
-                if (data.rentalsData)
-                    rentalsData = data.rentalsData;
-                if (data.reservationsData)
-                    reservationsData = data.reservationsData;
-                if (data.maintenanceData)
-                    maintenanceData = data.maintenanceData;
-                if (data.activitiesData)
-                    activitiesData = data.activitiesData;
-                if (data.settings) {
-                    state.settings = { ...state.settings, ...data.settings };
+function autoSyncWithFirebase() {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        if (!((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) || !((_b = state.settings) === null || _b === void 0 ? void 0 : _b.firebaseAutoSync)) {
+            return;
+        }
+        try {
+            // Check if Firebase functions exist
+            if (typeof loadDataFromFirebase === 'function' && typeof initializeFirebase === 'function') {
+                const config = (_c = state.settings) === null || _c === void 0 ? void 0 : _c.firebaseConfig;
+                if ((config === null || config === void 0 ? void 0 : config.apiKey) && (config === null || config === void 0 ? void 0 : config.databaseURL)) {
+                    console.log('🔄 Otomatik Firebase senkronizasyonu başlatılıyor...');
+                    // Initialize Firebase
+                    initializeFirebase(config);
+                    // Load data from Firebase
+                    const data = yield loadDataFromFirebase();
+                    // Update local data if Firebase has data
+                    if (data.vehiclesData)
+                        vehiclesData = data.vehiclesData;
+                    if (data.customersData)
+                        customersData = data.customersData;
+                    if (data.rentalsData)
+                        rentalsData = data.rentalsData;
+                    if (data.reservationsData)
+                        reservationsData = data.reservationsData;
+                    if (data.maintenanceData)
+                        maintenanceData = data.maintenanceData;
+                    if (data.activitiesData)
+                        activitiesData = data.activitiesData;
+                    if (data.settings) {
+                        state.settings = Object.assign(Object.assign({}, state.settings), data.settings);
+                    }
+                    // Save to localStorage
+                    saveDataToLocalStorage();
+                    console.log('✅ Firebase otomatik senkronizasyonu tamamlandı');
+                    showToast('Veriler Firebase\'den otomatik güncellendi! 🔄', 'success');
+                    // Re-render app with updated data
+                    renderApp();
                 }
-                // Update last sync date
-                const now = new Date();
-                state.settings.lastSyncDate = now.toISOString();
-                
-                // Save to localStorage
-                saveDataToLocalStorage();
-                console.log('✅ Firebase otomatik senkronizasyonu tamamlandı');
-                showToast(`Veriler Firebase'den otomatik güncellendi! 🔄\nSon Sync: ${now.toLocaleString('tr-TR')}`, 'success');
-                // Re-render app with updated data
-                renderApp();
             }
         }
-    }
-    catch (error) {
-        console.error('❌ Otomatik Firebase senkronizasyon hatası:', error);
-    }
+        catch (error) {
+            console.error('❌ Otomatik Firebase senkronizasyon hatası:', error);
+        }
+    });
 }
 // Sayfa kapatılırken otomatik Firebase yedekleme
-async function autoBackupToFirebase() {
-    if (!state.settings?.firebaseEnabled || !state.settings?.firebaseAutoSync) {
-        return;
-    }
-    try {
-        // Check if Firebase functions exist
-        if (typeof sendDataToFirebase === 'function' && typeof initializeFirebase === 'function') {
-            const config = state.settings?.firebaseConfig;
-            if (config?.apiKey && config?.databaseURL) {
-                console.log('💾 Sayfa kapatılıyor, veriler Firebase\'e yedekleniyor...');
-                // Initialize Firebase
-                initializeFirebase(config);
-                // Prepare data
-                const dataToSend = {
-                    vehiclesData,
-                    customersData,
-                    rentalsData,
-                    reservationsData,
-                    maintenanceData,
-                    activitiesData,
-                    settings: state.settings,
-                };
-                await sendDataToFirebase(dataToSend);
-                
-                // Update last sync date
-                const now = new Date();
-                state.settings.lastSyncDate = now.toISOString();
-                saveDataToLocalStorage(); // Save the updated sync date
-                
-                console.log('✅ Veriler Firebase\'e otomatik yedeklendi');
+function autoBackupToFirebase() {
+    return __awaiter(this, void 0, void 0, function* () {
+        var _a, _b, _c;
+        if (!((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) || !((_b = state.settings) === null || _b === void 0 ? void 0 : _b.firebaseAutoSync)) {
+            return;
+        }
+        try {
+            // Check if Firebase functions exist
+            if (typeof sendDataToFirebase === 'function' && typeof initializeFirebase === 'function') {
+                const config = (_c = state.settings) === null || _c === void 0 ? void 0 : _c.firebaseConfig;
+                if ((config === null || config === void 0 ? void 0 : config.apiKey) && (config === null || config === void 0 ? void 0 : config.databaseURL)) {
+                    console.log('💾 Sayfa kapatılıyor, veriler Firebase\'e yedekleniyor...');
+                    // Initialize Firebase
+                    initializeFirebase(config);
+                    // Prepare data
+                    const dataToSend = {
+                        vehiclesData,
+                        customersData,
+                        rentalsData,
+                        reservationsData,
+                        maintenanceData,
+                        activitiesData,
+                        settings: state.settings,
+                    };
+                    yield sendDataToFirebase(dataToSend);
+                    console.log('✅ Veriler Firebase\'e otomatik yedeklendi');
+                }
             }
         }
-    }
-    catch (error) {
-        console.error('❌ Otomatik Firebase yedekleme hatası:', error);
-    }
+        catch (error) {
+            console.error('❌ Otomatik Firebase yedekleme hatası:', error);
+        }
+    });
 }
 // PWA Install Prompt Handler
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -3644,11 +4292,127 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('beforeunload', (e) => {
     autoBackupToFirebase();
 });
-// Initial render
-loadDataFromLocalStorage(); // Uygulama açılırken verileri yükle
-initializeActivitiesData(); // Eğer activities boşsa, sample veriler ekle
-renderApp();
-// Auto-sync on app start (after initial render)
-setTimeout(() => {
-    autoSyncWithFirebase();
-}, 1000); // 1 saniye bekle ki uygulama tam yüklensin
+// ELECTRON FIX: DOM yüklenene kadar bekle
+if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+        console.log('⏳ DOM loading, DOMContentLoaded bekleniyor...');
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    }
+    else {
+        console.log('✅ DOM zaten yüklü, hemen başlatılıyor...');
+        initializeApp();
+    }
+}
+function initializeApp() {
+    var _a, _b;
+    console.log('🏁 Uygulama başlatılıyor...');
+    console.log('📍 document.body:', document.body);
+    console.log('📍 document.readyState:', document.readyState);
+    try {
+        loadDataFromLocalStorage(); // Uygulama açılırken verileri yükle
+        // Ensure body is ready before rendering
+        if (!document.body) {
+            console.warn('⚠️ document.body henüz hazır değil, body load bekleniyor...');
+            window.addEventListener('load', () => {
+                console.log('✅ Window load event - body hazır');
+                renderApp();
+            });
+            return;
+        }
+        renderApp();
+        console.log('✅ Uygulama başarıyla başlatıldı!');
+        // 🔥 OTOMATIK FIREBASE SYNC - Uygulama açılırken Firebase'den veri yükle
+        if (((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) && ((_b = state.settings) === null || _b === void 0 ? void 0 : _b.firebaseAutoSync)) {
+            setTimeout(() => __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                console.log('🔄 Otomatik Firebase sync başlatılıyor...');
+                try {
+                    // Firebase'i başlat
+                    if (typeof initializeFirebase === 'function') {
+                        yield initializeFirebase((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig);
+                    }
+                    // Veri çek
+                    if (typeof fetchDataFromFirebase === 'function') {
+                        const data = yield fetchDataFromFirebase();
+                        if (data) {
+                            // Firebase'den gelen verileri yükle
+                            if (data.vehiclesData) {
+                                vehiclesData.length = 0;
+                                vehiclesData.push(...data.vehiclesData);
+                            }
+                            if (data.customersData) {
+                                customersData.length = 0;
+                                customersData.push(...data.customersData);
+                            }
+                            if (data.rentalsData) {
+                                rentalsData.length = 0;
+                                rentalsData.push(...data.rentalsData);
+                            }
+                            if (data.reservationsData) {
+                                reservationsData.length = 0;
+                                reservationsData.push(...data.reservationsData);
+                            }
+                            if (data.maintenanceData) {
+                                maintenanceData.length = 0;
+                                maintenanceData.push(...data.maintenanceData);
+                            }
+                            if (data.activitiesData && Array.isArray(data.activitiesData)) {
+                                activitiesData.length = 0;
+                                const convertedActivities = data.activitiesData.map((activity) => {
+                                    // Date objesini güvenli şekilde parse et
+                                    let parsedDate = new Date();
+                                    try {
+                                        // Önce time, sonra date kontrolü yap
+                                        if (activity.time) {
+                                            parsedDate = activity.time instanceof Date ? activity.time : new Date(activity.time);
+                                        }
+                                        else if (activity.date) {
+                                            parsedDate = activity.date instanceof Date ? activity.date : new Date(activity.date);
+                                        }
+                                        // Geçersiz tarih kontrolü
+                                        if (isNaN(parsedDate.getTime())) {
+                                            parsedDate = new Date();
+                                        }
+                                    }
+                                    catch (e) {
+                                        console.warn('Date parse hatası:', activity);
+                                        parsedDate = new Date();
+                                    }
+                                    return {
+                                        icon: activity.icon || 'fa-solid fa-circle-info',
+                                        message: activity.message || 'Bilinmeyen aktivite',
+                                        time: parsedDate
+                                    };
+                                });
+                                activitiesData.push(...convertedActivities);
+                            }
+                            // Son yükleme saatini güncelle
+                            const now = new Date();
+                            const timeString = now.toLocaleTimeString('tr-TR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+                            setState({
+                                settings: Object.assign(Object.assign({}, state.settings), { lastSyncDate: data.lastUpdate || new Date().toISOString(), lastSyncTime: timeString })
+                            });
+                            showToast('✅ Firebase verisi yüklendi!', 'success');
+                            console.log('✅ Firebase otomatik sync tamamlandı!', {
+                                vehicles: vehiclesData.length,
+                                customers: customersData.length,
+                                time: timeString
+                            });
+                        }
+                    }
+                }
+                catch (error) {
+                    console.error('❌ Otomatik Firebase sync hatası:', error);
+                }
+            }), 1500); // 1.5 saniye bekle ki Firebase SDK yüklensin
+        }
+    }
+    catch (error) {
+        console.error('❌ Uygulama başlatma hatası:', error);
+    }
+}
+

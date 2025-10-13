@@ -82,7 +82,11 @@ body {
 }
 
 .sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     height: 40px;
+    color: #fff;
 }
 
 .nav-menu {
@@ -132,6 +136,7 @@ body {
   flex-direction: column;
   background: linear-gradient(135deg, #f3e7e9 0%, #e3eeff 100%);
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
 }
 
 .page-header {
@@ -2740,4 +2745,418 @@ input:checked + .slider:before {
     background-color: var(--border-color);
     transform: none;
     box-shadow: none;
+}
+
+/* ============================================
+   📱 MOBİL RESPONSIVE TASARIM
+   ============================================ */
+
+/* Hamburger menü butonu */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(91, 134, 229, 0.4);
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(91, 134, 229, 0.6);
+}
+
+.mobile-menu-toggle:active {
+    transform: scale(0.95);
+}
+
+/* Overlay (arka plan karartma) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none; /* Overlay kapalıyken tıklamaları engelleme */
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto; /* Overlay açıkken tıklanabilir */
+}
+
+/* Tablet ve daha küçük ekranlar (768px ve altı) */
+@media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .app-container {
+        flex-direction: column;
+    }
+
+    /* Sidebar mobilde gizli, overlay ile açılır */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px; /* Ekranın dışında başla */
+        height: 100vh;
+        width: 280px;
+        z-index: 1000;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
+        transition: left 0.3s ease;
+        overflow-y: auto;
+    }
+
+    .sidebar.mobile-open {
+        left: 0; /* Açıldığında görünür */
+    }
+
+    .sidebar-overlay {
+        display: block;
+    }
+
+    /* Main content tam genişlik */
+    .main-content {
+        width: 100%;
+        margin-left: 0;
+        padding: 80px 16px 24px 16px; /* Üstten boşluk (hamburger menü için) */
+    }
+
+    /* Sayfa başlıkları mobil */
+    .page-header h1 {
+        font-size: 24px;
+    }
+
+    .page-header p {
+        font-size: 14px;
+    }
+
+    /* Grid düzenleri mobilde tek sütun */
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .vehicles-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .customers-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Kartlar mobilde daha kompakt */
+    .vehicle-card,
+    .customer-card {
+        padding: 16px;
+    }
+
+    /* Butonlar mobilde tam genişlik */
+    .page-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .page-actions .btn,
+    .page-actions .search-bar {
+        width: 100%;
+    }
+
+    .search-bar input {
+        width: 100%;
+    }
+
+    /* Modal mobilde tam ekran */
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
+        max-height: 90vh;
+        margin: 20px auto;
+    }
+
+    .modal-body {
+        max-height: calc(90vh - 160px);
+    }
+
+    /* Form grid mobilde tek sütun */
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Tablo kaydırılabilir */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 600px;
+    }
+
+    /* Aksiyon butonları mobilde dikey */
+    .table-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .table-actions .btn {
+        width: 100%;
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+
+    /* Bildirimler mobilde tam genişlik */
+    .notification-card {
+        padding: 12px;
+    }
+
+    /* Dashboard istatistikler */
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card h3 {
+        font-size: 24px;
+    }
+
+    /* Araç kartı aksiyonları */
+    .vehicle-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .vehicle-actions .btn {
+        width: 100%;
+    }
+
+    /* Settings accordion mobil fix */
+    .settings-accordion {
+        touch-action: manipulation; /* Prevent double-tap zoom */
+    }
+
+    .settings-accordion-header {
+        padding: 16px;
+        min-height: 60px; /* Daha kolay tıklanabilir */
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-accordion-content {
+        touch-action: pan-y; /* Enable vertical scrolling */
+    }
+
+    .accordion-content-inner {
+        padding: 16px;
+    }
+
+    /* Input ve button'lar mobilde daha büyük */
+    .settings-accordion-content input,
+    .settings-accordion-content button,
+    .settings-accordion-content select {
+        min-height: 44px; /* Apple'ın önerdiği minimum touch target */
+        font-size: 16px; /* iOS zoom'u engellemek için */
+    }
+
+    .settings-accordion-content label {
+        font-size: 14px;
+        padding: 8px 0;
+    }
+}
+
+/* Küçük telefonlar (480px ve altı) */
+@media (max-width: 480px) {
+    .mobile-menu-toggle {
+        top: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .main-content {
+        padding: 70px 12px 20px 12px;
+    }
+
+    .page-header h1 {
+        font-size: 20px;
+    }
+
+    .page-header p {
+        font-size: 13px;
+    }
+
+    .stat-card h3 {
+        font-size: 20px;
+    }
+
+    .modal-content {
+        width: 98%;
+        margin: 10px auto;
+    }
+
+    /* Font boyutları daha küçük */
+    body {
+        font-size: 14px;
+    }
+
+    .btn {
+        font-size: 13px;
+        padding: 10px 16px;
+    }
+
+    /* Kartlardaki metinler */
+    .vehicle-info strong,
+    .customer-info strong {
+        font-size: 13px;
+    }
+}
+
+/* Landscape tablet (yatay tablet) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+    }
+
+    .main-content {
+        padding: 32px;
+    }
+
+    .vehicles-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Touch device optimizasyonları */
+@media (hover: none) and (pointer: coarse) {
+    /* Touch cihazlarda butonlar daha büyük */
+    .btn {
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+
+    .nav-link {
+        min-height: 48px;
+        padding: 14px 16px;
+    }
+
+    /* Scrollbar touch cihazlarda daha ince */
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+}
+
+/* =====================================================
+   TOAST NOTIFICATION STYLES
+   ===================================================== */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 300px;
+    max-width: 500px;
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    pointer-events: auto;
+    border-left: 4px solid;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast i {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.toast span {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+/* Success Toast */
+.toast-success {
+    border-left-color: #22c55e;
+    background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+}
+
+.toast-success i {
+    color: #22c55e;
+}
+
+/* Error Toast */
+.toast-error {
+    border-left-color: #ef4444;
+    background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+}
+
+.toast-error i {
+    color: #ef4444;
+}
+
+/* Info Toast */
+.toast-info {
+    border-left-color: #3b82f6;
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+}
+
+.toast-info i {
+    color: #3b82f6;
+}
+
+/* Mobile toast adjustments */
+@media (max-width: 768px) {
+    #toast-container {
+        top: 80px; /* Hamburger menüsünün altında */
+        right: 10px;
+        left: 10px;
+    }
+
+    .toast {
+        min-width: auto;
+        width: 100%;
+    }
 }

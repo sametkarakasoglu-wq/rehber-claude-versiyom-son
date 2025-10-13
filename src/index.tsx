@@ -3,11 +3,196 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Declare global Firebase
+declare var firebase: any;
+
+console.log('🚀 index.tsx başladı yüklenmeye...');
+
+/**
+ * Firebase Configuration and Initialization
+ * This file handles Firebase setup and provides sync functions
+ */
+
+// Firebase will be imported from CDN in index.html
+let firebaseApp = null;
+let firebaseDatabase = null;
+let isFirebaseInitialized = false;
+
+// Default Firebase configuration
+const defaultFirebaseConfig = {
+  apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
+  authDomain: "rehber-filo.firebaseapp.com",
+  databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "rehber-filo",
+  storageBucket: "rehber-filo.firebasestorage.app",
+  messagingSenderId: "1022169726073",
+  appId: "1:1022169726073:web:584648469dd7854248a8a8"
+};
+
+/**
+ * Initialize Firebase with user configuration
+ */
+function initializeFirebase(config = null) {
+  console.log('🔥 initializeFirebase() çağrıldı, config:', config);
+  try {
+    // Use provided config or default config
+    const finalConfig = config || defaultFirebaseConfig;
+
+    if (!finalConfig || !finalConfig.apiKey || !finalConfig.databaseURL) {
+      throw new Error('Firebase konfigürasyonu eksik!');
+    }
+
+    // Initialize Firebase
+    if (typeof firebase !== 'undefined') {
+      firebaseApp = firebase.initializeApp(finalConfig);
+      firebaseDatabase = firebase.database();
+      isFirebaseInitialized = true;
+      console.log('✅ Firebase başarıyla başlatıldı!');
+      return true;
+    } else {
+      throw new Error('Firebase SDK yüklenmedi!');
+    }
+  } catch (error) {
+    console.error('❌ Firebase başlatma hatası:', error);
+    isFirebaseInitialized = false;
+    return false;
+  }
+}
+
+/**
+ * Test Firebase connection
+ */
+async function testFirebaseConnection() {
+  if (!isFirebaseInitialized || !firebaseDatabase) {
+    throw new Error('Firebase başlatılmamış!');
+  }
+
+  try {
+    // Try to read from database
+    const testRef = firebaseDatabase.ref('.info/connected');
+    const snapshot = await testRef.once('value');
+    return snapshot.val() === true;
+  } catch (error) {
+    console.error('Firebase bağlantı testi başarısız:', error);
+    return false;
+  }
+}
+
+/**
+ * Send all data to Firebase
+ */
+async function sendDataToFirebase(data) {
+  if (!isFirebaseInitialized || !firebaseDatabase) {
+    throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+  }
+
+  try {
+    const updates = {};
+
+    // Prepare data for Firebase
+    updates['/vehicles'] = data.vehiclesData || [];
+    updates['/customers'] = data.customersData || [];
+    updates['/rentals'] = data.rentalsData || [];
+    updates['/reservations'] = data.reservationsData || [];
+    updates['/maintenance'] = data.maintenanceData || [];
+    updates['/activities'] = data.activitiesData || [];
+    updates['/settings'] = data.settings || {};
+    updates['/lastUpdate'] = new Date().toISOString();
+
+    // Send to Firebase
+    await firebaseDatabase.ref().update(updates);
+
+    console.log('✅ Veriler Firebase\'e gönderildi!');
+    return true;
+  } catch (error) {
+    console.error('❌ Firebase\'e veri gönderme hatası:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch all data from Firebase
+ */
+async function fetchDataFromFirebase() {
+  if (!isFirebaseInitialized || !firebaseDatabase) {
+    throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+  }
+
+  try {
+    const snapshot = await firebaseDatabase.ref().once('value');
+    const data = snapshot.val();
+
+    if (!data) {
+      throw new Error('Firebase\'de veri bulunamadı!');
+    }
+
+    const result = {
+      vehiclesData: data.vehicles || [],
+      customersData: data.customers || [],
+      rentalsData: data.rentals || [],
+      reservationsData: data.reservations || [],
+      maintenanceData: data.maintenance || [],
+      activitiesData: data.activities || [],
+      settings: data.settings || {},
+      lastUpdate: data.lastUpdate || null
+    };
+
+    console.log('✅ Veriler Firebase\'den alındı!');
+    return result;
+  } catch (error) {
+    console.error('❌ Firebase\'den veri çekme hatası:', error);
+    throw error;
+  }
+}
+
+/**
+ * Setup real-time listener for data changes
+ */
+function setupFirebaseListener(callback) {
+  if (!isFirebaseInitialized || !firebaseDatabase) {
+    console.warn('Firebase başlatılmamış, listener kurulamadı!');
+    return null;
+  }
+
+  try {
+    const ref = firebaseDatabase.ref();
+    ref.on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data && callback) {
+        callback(data);
+      }
+    });
+
+    console.log('✅ Firebase realtime listener kuruldu!');
+    return ref;
+  } catch (error) {
+    console.error('❌ Firebase listener kurulumu hatası:', error);
+    return null;
+  }
+}
+
+/**
+ * Load data from Firebase (alias for fetchDataFromFirebase)
+ */
+async function loadDataFromFirebase() {
+  return await fetchDataFromFirebase();
+}
+
+/**
+ * Remove Firebase listener
+ */
+function removeFirebaseListener(ref) {
+  if (ref) {
+    ref.off();
+    console.log('Firebase listener kaldırıldı!');
+  }
+}
+
 // Firebase function declarations (defined in firebase-config.js)
-declare function initializeFirebase(config: any): boolean;
-declare function testFirebaseConnection(): Promise<boolean>;
-declare function sendDataToFirebase(data: any): Promise<void>;
-declare function loadDataFromFirebase(): Promise<any>;
+// declare function initializeFirebase(config: any): boolean;
+// declare function testFirebaseConnection(): Promise<boolean>;
+// declare function sendDataToFirebase(data: any): Promise<void>;
+// declare function loadDataFromFirebase(): Promise<any>;
 
 // Simple pseudo-ReactDOM render function
 function render(element: string, container: HTMLElement | null) {
@@ -464,14 +649,14 @@ const DashboardPage = () => {
     <section class="recent-activities-panel">
       <h3>Son Yapılan İşlemler</h3>
       <ul class="activity-list">
-          ${activitiesData.map(activity => `
+          ${activitiesData.filter(activity => activity && activity.icon && activity.message).map(activity => `
               <li class="activity-item">
                   <div class="activity-icon">
                       <i class="fa-solid ${activity.icon}"></i>
                   </div>
                   <div class="activity-details">
                       <p>${activity.message}</p>
-                      <span>${formatTimeAgo(activity.time)}</span>
+                      <span>${activity.time ? formatTimeAgo(activity.time) : 'Bilinmiyor'}</span>
                   </div>
               </li>
           `).join('')}
@@ -620,8 +805,9 @@ const CustomersPage = (): string => {
                 c.tc.includes(state.searchTerm) ||
                 c.phone.includes(state.searchTerm)
             ).map((customer) => {
-                const totalRentals = customer.rentals.length;
-                const hasActiveRental = customer.rentals.some(r => r.status === 'Aktif');
+                const customerRentals = rentalsData.filter(r => r.customerId === customer.id) || [];
+                const totalRentals = customerRentals.length;
+                const hasActiveRental = customerRentals.some(r => r.status === 'active');
                 const initials = customer.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
                 return `
@@ -679,7 +865,7 @@ const CustomersPage = (): string => {
                         <div class="accordion-section-header">
                             <h4>Kiralama Geçmişi</h4>
                         </div>
-                        ${customer.rentals.length > 0 ? `
+                        ${customerRentals.length > 0 ? `
                             <table class="rental-history-table">
                                 <thead>
                                     <tr>
@@ -689,13 +875,17 @@ const CustomersPage = (): string => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${customer.rentals.map(rental => `
+                                    ${customerRentals.map(rental => {
+                                        const startDate = rental.startDate ? new Date(rental.startDate).toLocaleDateString('tr-TR') : '-';
+                                        const endDate = rental.endDate ? new Date(rental.endDate).toLocaleDateString('tr-TR') : '-';
+                                        const statusText = rental.status === 'active' ? 'Aktif' : 'Tamamlandı';
+                                        return `
                                         <tr>
-                                            <td>${rental.plate}</td>
-                                            <td>${rental.date}</td>
-                                            <td><span class="status-badge ${rental.status === 'Tamamlandı' ? 'available' : 'rented'}">${rental.status}</span></td>
+                                            <td>${rental.vehiclePlate}</td>
+                                            <td>${startDate} - ${endDate}</td>
+                                            <td><span class="status-badge ${rental.status === 'completed' ? 'available' : 'rented'}">${statusText}</span></td>
                                         </tr>
-                                    `).join('')}
+                                    `}).join('')}
                                 </tbody>
                             </table>
                         ` : '<p class="no-history">Bu müşterinin kiralama geçmişi bulunmuyor.</p>'}
@@ -1925,7 +2115,14 @@ const App = () => {
   return `
     <nav class="sidebar">
       <div class="sidebar-header">
-        <img src="https://storage.googleapis.com/genai-web-experiments/logo-horizontal.png" alt="Rehber Otomotiv Logo" class="sidebar-logo" />
+        <div class="sidebar-logo">
+          ${state.settings.companyInfo.logo ? `
+            <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+          ` : `
+            <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
+            <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
+          `}
+        </div>
       </div>
       <ul class="nav-menu">
         ${navItems.map(item => `
@@ -1954,12 +2151,44 @@ const App = () => {
 };
 
 function renderApp() {
+  console.log('🎨 renderApp() fonksiyonu çağrıldı');
   try {
-    // console.log('Rendering app...');
+    // KRITIK FIX: activitiesData'yı temizle
+    if (activitiesData && Array.isArray(activitiesData)) {
+      activitiesData = activitiesData.filter(activity => {
+        if (!activity || !activity.icon || !activity.message) return false;
+        
+        // time kontrolü - geçersiz Date objelerini temizle
+        if (activity.time) {
+          try {
+            if (!(activity.time instanceof Date)) {
+              activity.time = new Date(activity.time);
+            }
+            if (isNaN(activity.time.getTime())) {
+              console.warn('⚠️ Geçersiz aktivite tarihi silindi:', activity);
+              return false;
+            }
+          } catch (e) {
+            console.warn('⚠️ Aktivite parse hatası, silindi:', activity);
+            return false;
+          }
+        } else {
+          activity.time = new Date(); // time yoksa şimdi ekle
+        }
+        
+        return true;
+      });
+    }
+    
     const root = document.getElementById('root');
-    document.body.className = state.theme; // Apply theme on every render
+    
+    // KRITIK FIX: document.body null kontrolü
+    const body = document.body;
+    if (body && state && state.theme) {
+      body.className = state.theme;
+    }
+    
     render(App(), root);
-    // console.log('App rendered successfully.');
   } catch (error) {
     console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
     const root = document.getElementById('root');
@@ -1976,22 +2205,39 @@ function attachEventListeners() {
     document.getElementById('theme-toggle')?.addEventListener('change', (e) => {
         const isChecked = (e.target as HTMLInputElement).checked;
         const newTheme = isChecked ? 'dark' : 'light';
-        document.body.className = newTheme; // Apply theme to body
+        if (document.body) {
+            document.body.className = newTheme; // Apply theme to body
+        }
         setState({ theme: newTheme });
     });
 
-    // Settings Page Accordion
+    // Settings Page Accordion - Mobile-friendly fix
     document.querySelectorAll('.settings-accordion-header').forEach(header => {
-        header.addEventListener('click', () => {
-            const accordion = header.closest('.settings-accordion');
-            accordion.classList.toggle('active');
+        const clickHandler = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const accordion = header.closest('.settings-accordion') || header.parentElement;
+            if (!accordion) return;
+            
             const content = accordion.querySelector('.settings-accordion-content') as HTMLElement;
-            if (accordion.classList.contains('active')) {
-                content.style.maxHeight = content.scrollHeight + 'px';
-            } else {
+            if (!content) return;
+            
+            // Toggle active class
+            const isActive = accordion.classList.contains('active');
+            
+            if (isActive) {
+                accordion.classList.remove('active');
                 content.style.maxHeight = '0';
+            } else {
+                accordion.classList.add('active');
+                content.style.maxHeight = content.scrollHeight + 'px';
             }
-        });
+        };
+        
+        // Both click and touch events for mobile compatibility
+        header.addEventListener('click', clickHandler);
+        header.addEventListener('touchend', clickHandler);
     });
 
     // Settings Page - Company Info & PDF settings
@@ -2069,10 +2315,37 @@ function attachEventListeners() {
     });
 
     // Settings Page - Save Button
-    document.querySelector('.btn-gradient-save')?.addEventListener('click', () => {
+    document.querySelector('.btn-gradient-save')?.addEventListener('click', async () => {
         // Veriler her değişiklikte zaten kaydediliyor, bu buton sadece geri bildirim ve UI temizliği için.
         saveDataToLocalStorage(); // En son halini garantiye alarak kaydet.
-        showToast('Ayarlar başarıyla kaydedildi!', 'success');
+        
+        // 🔥 Firebase'e otomatik kaydet
+        if (state.settings?.firebaseEnabled) {
+            try {
+                const dataToSend = {
+                    vehiclesData,
+                    customersData,
+                    rentalsData,
+                    reservationsData,
+                    maintenanceData,
+                    activitiesData,
+                    settings: state.settings,
+                };
+                
+                // Firebase'e gönder
+                if (typeof sendDataToFirebase === 'function') {
+                    await sendDataToFirebase(dataToSend);
+                    showToast('✅ Ayarlar kaydedildi ve Firebase\'e yüklendi!', 'success');
+                } else {
+                    showToast('✅ Ayarlar kaydedildi!', 'success');
+                }
+            } catch (error) {
+                console.error('Firebase kaydetme hatası:', error);
+                showToast('✅ Ayarlar yerel olarak kaydedildi!', 'success');
+            }
+        } else {
+            showToast('✅ Ayarlar başarıyla kaydedildi!', 'success');
+        }
 
         // Tüm açık akordiyonları kapat
         document.querySelectorAll('.settings-accordion.active').forEach(accordion => {
@@ -2246,14 +2519,14 @@ function attachEventListeners() {
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Alınıyor...';
             
             // Check if Firebase functions exist
-            if (typeof loadDataFromFirebase === 'function') {
+            if (typeof fetchDataFromFirebase === 'function') {
                 // Initialize Firebase if not already
                 const config = state.settings?.firebaseConfig;
                 if (typeof initializeFirebase === 'function') {
-                    initializeFirebase(config);
+                    await initializeFirebase(config);
                 }
                 
-                const data = await loadDataFromFirebase();
+                const data = await fetchDataFromFirebase();
                 
                 // Update local data
                 if (data.vehiclesData) vehiclesData = data.vehiclesData;
@@ -2296,7 +2569,7 @@ function attachEventListeners() {
         const deferredPrompt = (window as any).pwaInstallPrompt;
         
         if (!deferredPrompt) {
-            showToast('Bu uygulama zaten kurulu veya tarayıcınız PWA kurulumunu desteklemiyor. 📱', 'info');
+            showToast('Bu uygulama zaten kurulu veya tarayıcınız PWA kurulumunu desteklemiyor. 📱', 'success');
             return;
         }
         
@@ -2311,7 +2584,7 @@ function attachEventListeners() {
                 showToast('Uygulama kuruluyor... 🎉', 'success');
                 (window as any).pwaInstallPrompt = null;
             } else {
-                showToast('Kurulum iptal edildi.', 'info');
+                showToast('Kurulum iptal edildi.', 'success');
             }
             
         } catch (error) {
@@ -3381,8 +3654,23 @@ function handleMaintenanceEditFormSubmit(e: Event) {
     }
 }
 
-function formatTimeAgo(date: Date): string {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+function formatTimeAgo(date: Date | string | undefined): string {
+    // Güvenli date parse
+    if (!date) return "Bilinmiyor";
+    
+    let parsedDate: Date;
+    try {
+        parsedDate = date instanceof Date ? date : new Date(date);
+        // Invalid date kontrolü
+        if (isNaN(parsedDate.getTime())) {
+            return "Bilinmiyor";
+        }
+    } catch (e) {
+        console.warn('formatTimeAgo: Date parse hatası:', date);
+        return "Bilinmiyor";
+    }
+    
+    const seconds = Math.floor((new Date().getTime() - parsedDate.getTime()) / 1000);
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + " yıl önce";
     interval = seconds / 2592000;
@@ -3399,21 +3687,18 @@ function formatTimeAgo(date: Date): string {
 
 function generateRentalSummaryPDF(rental: Rental) {
     try {
+        // jsPDF kontrolü
+        if (!(window as any).jspdf) {
+            showToast("PDF kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.", "error");
+            console.error("jsPDF bulunamadı. window.jspdf:", (window as any).jspdf);
+            return;
+        }
+
         const { jsPDF } = (window as any).jspdf;
-        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-        // --- FONT DEFINITIONS (EMBEDDED) ---
-        // This makes the PDF generation independent of internet connection and avoids 404 errors.
-        const robotoNormalBase64 = 'AAEAAAARAQAABAAQR0RFRg... (font data is too long to show)'; // This is a placeholder for the actual very long base64 string
-        const robotoBoldBase64 = 'AAEAAAARAQAABAAQR0RFRg... (font data is too long to show)'; // This is a placeholder for the actual very long base64 string
-
-        // Add fonts to the virtual file system of jsPDF
-        doc.addFileToVFS('Roboto-Regular.ttf', robotoNormalBase64);
-        doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-
-        doc.addFileToVFS('Roboto-Bold.ttf', robotoBoldBase64);
-        doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
-        // --- END OF FONT DEFINITIONS ---
+        // Default font ayarla (built-in Helvetica)
+        doc.setFont('helvetica', 'normal');
 
         const customer = customersData.find(c => c.id === rental.customerId);
         const vehicle = vehiclesData.find(v => v.plate === rental.vehiclePlate);
@@ -3422,112 +3707,746 @@ function generateRentalSummaryPDF(rental: Rental) {
             if (!dateInput) return 'Belirtilmemiş';
             return new Date(dateInput).toLocaleDateString('tr-TR');
         };
-        const formatKm = (km: number | null) => km ? km.toLocaleString('tr-TR') + ' km' : 'N/A';
-        const formatCost = (cost: number | null) => cost ? `₺${cost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Hesaplanmadı';
+        const formatKm = (km: number | null) => km ? km.toLocaleString('tr-TR') : '0';
+        const formatPrice = (price: number) => '₺' + price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         const startDate = rental.startDate ? new Date(rental.startDate) : null;
         const endDate = rental.endDate ? new Date(rental.endDate) : null;
 
-        let totalDays = 'N/A';
+        let totalDays = 0;
         if (startDate && endDate) {
             const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-            totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24))).toString();
+            totalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
 
-        const totalKm = (rental.endKm && rental.startKm) ? (rental.endKm - rental.startKm).toLocaleString('tr-TR') + ' km' : 'N/A';
+        const usedKm = (rental.endKm && rental.startKm) ? (rental.endKm - rental.startKm) : 0;
+        
+        // Fiyat hesaplamaları
+        const dailyRate = rental.price || 0;
+        const kmLimit = 250; // günlük km limiti
+        const totalKmLimit = kmLimit * totalDays;
+        const kmExcess = Math.max(0, usedKm - totalKmLimit);
+        const kmExcessCost = kmExcess * 3; // 3 TL/km
+        const extraServices = 150; // Sabit ek hizmet ücreti
+        const subtotal = (dailyRate * totalDays);
+        const totalCost = subtotal + kmExcessCost + extraServices;
 
-        const primaryColor = '#3b82f6';
-        const textColor = '#1e293b';
-        const mutedColor = '#64748b';
-        const lightBg = '#f1f5f9';
-        const white = '#ffffff';
+        // Renkler - Modern gradient paleti
+        const primaryBlue = [41, 98, 255]; // #2962FF - Parlak mavi
+        const darkBlue = [13, 71, 161]; // #0D47A1 - Koyu mavi
+        const accentOrange = [255, 111, 0]; // #FF6F00 - Turuncu
+        const successGreen = [0, 200, 83]; // #00C853 - Yeşil
+        const textDark = [33, 33, 33];
+        const textGray = [97, 97, 97];
+        const lightGray = [245, 245, 245];
+        const white = [255, 255, 255];
 
+        const pageWidth = 210;
+        const pageHeight = 297;
         const margin = 15;
-        const contentWidth = 210 - (margin * 2);
-        let y = 20;
+        const contentWidth = pageWidth - (margin * 2);
+        let y = 0;
 
-        const getImageFormat = (base64: string) => {
-            if (!base64 || !base64.startsWith('data:image')) return 'PNG';
-            const match = base64.match(/^data:image\/(png|jpe?g);base64,/);
-            return match ? (match[1].replace('jpeg', 'JPEG').toUpperCase() as 'PNG' | 'JPEG') : 'PNG';
-        };
-
-        if (state.settings.pdfSettings.showBackground && state.settings.companyInfo.pdfBackground) {
-            try {
-                doc.addImage(state.settings.companyInfo.pdfBackground, getImageFormat(state.settings.companyInfo.pdfBackground), 0, 0, 210, 297, '', 'FAST');
-            } catch (e) { console.error("PDF Arka Planı eklenirken hata oluştu:", e); doc.setFillColor(lightBg); doc.rect(0, 0, 210, 297, 'F'); }
-        } else {
-            doc.setFillColor(lightBg);
-            doc.rect(0, 0, 210, 297, 'F');
+        // ========== HEADER SECTION - Gradient Background ==========
+        // Gradient effect (yukarıdan aşağıya mavi tonları)
+        for (let i = 0; i < 50; i++) {
+            const ratio = i / 50;
+            const r = primaryBlue[0] + (darkBlue[0] - primaryBlue[0]) * ratio;
+            const g = primaryBlue[1] + (darkBlue[1] - primaryBlue[1]) * ratio;
+            const b = primaryBlue[2] + (darkBlue[2] - primaryBlue[2]) * ratio;
+            doc.setFillColor(r, g, b);
+            doc.rect(0, i * 1.4, pageWidth, 1.5, 'F');
         }
 
+        y = 25;
+
+        // Logo placeholder (sol üst - beyaz kutu)
         if (state.settings.pdfSettings.showLogo && state.settings.companyInfo.logo) {
             try {
-                doc.addImage(state.settings.companyInfo.logo, getImageFormat(state.settings.companyInfo.logo), margin, y - 8, 40, 15);
-            } catch (e) { console.error("PDF Logosu eklenirken hata oluştu:", e); }
+                doc.setFillColor(255, 255, 255);
+                doc.roundedRect(margin, 12, 45, 20, 3, 3, 'F');
+                const imgFormat = state.settings.companyInfo.logo.match(/^data:image\/(png|jpe?g);base64,/) ? 
+                    (state.settings.companyInfo.logo.includes('png') ? 'PNG' : 'JPEG') : 'PNG';
+                doc.addImage(state.settings.companyInfo.logo, imgFormat, margin + 2, 14, 41, 16);
+            } catch (e) { console.error("Logo eklenemedi:", e); }
         }
 
-        doc.setFont('Roboto', 'bold');
-        doc.setFontSize(18);
-        doc.setTextColor(textColor);
-        doc.text(state.settings.companyInfo.name, margin, y);
+        // Sözleşme numarası (sağ üst - turuncu badge)
+        doc.setFillColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+        doc.roundedRect(pageWidth - margin - 45, 12, 45, 10, 5, 5, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(`SÖZLEŞME #${rental.id}`, pageWidth - margin - 22.5, 18.5, { align: 'center' });
 
-        doc.setFont('Roboto', 'normal');
+        // Ana başlık
+        doc.setFontSize(32);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('KİRALAMA ÖZETİ', pageWidth / 2, y, { align: 'center' });
+        
+        y += 10;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'normal');
+        doc.text(state.settings.companyInfo.name.toUpperCase(), pageWidth / 2, y, { align: 'center' });
+        
+        y += 3;
         doc.setFontSize(10);
-        doc.setTextColor(mutedColor);
-        doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, 210 - margin, y - 5, { align: 'right' });
-        doc.text(`Kayıt No: #${rental.id}`, 210 - margin, y, { align: 'right' });
+        doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString('tr-TR')}`, pageWidth / 2, y, { align: 'center' });
+
         y += 15;
 
-        doc.setDrawColor(primaryColor);
-        doc.setLineWidth(1);
-        doc.line(margin, y, 210 - margin, y);
-        y += 15;
+        // ========== BODY - Beyaz background ==========
+        doc.setFillColor(250, 250, 250);
+        doc.rect(0, y, pageWidth, pageHeight - y, 'F');
 
-        doc.setFont('Roboto', 'bold');
-        doc.setFontSize(24);
-        doc.setTextColor(primaryColor);
-        doc.text("ARAÇ KİRALAMA RAPORU", 105, y, { align: 'center' });
-        y += 20;
+        y += 12;
 
-        const drawSection = (title: string, data: { label: string, value: string }[], icon: string) => {
-            const sectionHeight = (data.length * 8) + 25;
-            doc.setFillColor(white);
-            doc.roundedRect(margin, y, contentWidth, sectionHeight, 5, 5, 'F');
-            doc.setFillColor(primaryColor);
-            doc.roundedRect(margin, y, contentWidth, 12, 5, 5, 'F');
-            doc.setFont('Roboto', 'bold');
-            doc.setFontSize(12);
-            doc.setTextColor(white);
-            doc.text(icon, margin + 7, y + 8.5);
-            doc.text(title, margin + 15, y + 8.5);
-            y += 20;
-            doc.setFont('Roboto', 'normal');
-            doc.setFontSize(11);
-            data.forEach(item => {
-                doc.setTextColor(mutedColor);
-                doc.text(item.label, margin + 10, y);
-                doc.setTextColor(textColor);
-                doc.setFont('Roboto', 'bold');
-                doc.text(item.value, margin + 60, y);
-                y += 8;
-            });
-            y += 15;
+        // ========== Helper Functions ==========
+        const drawCard = (title: string, iconText: string, iconBg: number[], contentHeight: number, drawContent: () => void) => {
+            const cardStartY = y;
+            
+            // Card shadow effect
+            doc.setFillColor(200, 200, 200);
+            doc.roundedRect(margin + 1, cardStartY + 1, contentWidth, contentHeight, 4, 4, 'F');
+            
+            // Card background
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, cardStartY, contentWidth, contentHeight, 4, 4, 'F');
+            
+            // Card border
+            doc.setDrawColor(230, 230, 230);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(margin, cardStartY, contentWidth, contentHeight, 4, 4, 'S');
+            
+            // Üst renkli çizgi
+            doc.setFillColor(iconBg[0], iconBg[1], iconBg[2]);
+            doc.rect(margin, cardStartY, contentWidth, 3, 'F');
+            
+            // Icon badge (sol üst)
+            doc.setFillColor(iconBg[0], iconBg[1], iconBg[2]);
+            doc.roundedRect(margin + 5, cardStartY + 8, 12, 8, 2, 2, 'F');
+            doc.setFontSize(9);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text(iconText, margin + 11, cardStartY + 13.5, { align: 'center' });
+            
+            // Card title
+            doc.setFontSize(13);
+            doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, margin + 20, cardStartY + 13);
+            
+            y = cardStartY + 20;
+            drawContent();
+            
+            y = cardStartY + contentHeight + 8;
         };
 
-        drawSection('Müşteri Bilgileri', [{ label: 'Ad Soyad:', value: customer?.name || 'N/A' }, { label: 'Telefon:', value: customer?.phone || 'N/A' }, { label: 'E-posta:', value: customer?.email || 'N/A' }], '👤');
-        drawSection('Araç Bilgileri', [{ label: 'Plaka:', value: vehicle?.plate || 'N/A' }, { label: 'Marka/Model:', value: vehicle?.brand || 'N/A' }, { label: 'Başlangıç KM:', value: formatKm(rental.startKm) }, { label: 'Bitiş KM:', value: formatKm(rental.endKm) }], '🚗');
-        drawSection('Kiralama Bilgileri', [{ label: 'Başlangıç Tarihi:', value: formatDate(rental.startDate) }, { label: 'Bitiş Tarihi:', value: formatDate(rental.endDate) }, { label: 'Toplam Gün:', value: totalDays }, { label: 'Toplam KM:', value: totalKm }, { label: 'Ücret:', value: formatCost(rental.totalCost) }], '📅');
-
-        if (state.settings.pdfSettings.showFooter) {
-            const pageHeight = doc.internal.pageSize.height;
-            doc.setDrawColor('#e2e8f0');
-            doc.line(margin, pageHeight - 28, 210 - margin, pageHeight - 28);
-            doc.setFont('Roboto', 'normal');
+        const drawInfoRow = (label: string, value: string, xOffset: number = 0, isHighlight: boolean = false) => {
             doc.setFontSize(9);
-            doc.setTextColor(mutedColor);
-            doc.text("Bizi tercih ettiğiniz için teşekkür ederiz.", 105, pageHeight - 22, { align: 'center' });
-            doc.text(`${state.settings.companyInfo.name} | ${state.settings.companyInfo.address} | Tel: ${state.settings.companyInfo.phone}`, 105, pageHeight - 18, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text(label, margin + 8 + xOffset, y);
+            
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            if (isHighlight) {
+                doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            } else {
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            }
+            doc.text(value, margin + 8 + xOffset, y + 5);
+            
+            y += 12;
+        };
+
+        // ========== ARAÇ BİLGİLERİ CARD ==========
+        drawCard('ARAÇ BİLGİLERİ', '🚗', primaryBlue, 60, () => {
+            const col2X = contentWidth / 2;
+            
+            // Sol kolon
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('MARKA', vehicle?.brand?.split(' ')[0] || 'N/A', 0, false);
+            y = tempY + 12;
+            drawInfoRow('MODEL', vehicle?.brand?.split(' ').slice(1).join(' ') || 'N/A', 0, false);
+            y = tempY + 24;
+            drawInfoRow('YIL', vehicle?.year?.toString() || '2023', 0, false);
+            
+            // Sağ kolon
+            y = tempY;
+            drawInfoRow('PLAKA', vehicle?.plate || 'N/A', col2X, true);
+            y = tempY + 12;
+            drawInfoRow('RENK', vehicle?.color || 'Belirtilmemiş', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('YAKIT', vehicle?.fuelType || 'Benzin', col2X, false);
+            
+            y = tempY + 36;
+        });
+
+        // ========== MÜŞTERİ BİLGİLERİ CARD ==========
+        drawCard('MÜŞTERİ BİLGİLERİ', '👤', successGreen, 60, () => {
+            const col2X = contentWidth / 2;
+            
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('AD SOYAD', customer?.name || 'N/A', 0, true);
+            y = tempY + 12;
+            drawInfoRow('TELEFON', customer?.phone || 'N/A', 0, false);
+            y = tempY + 24;
+            drawInfoRow('E-POSTA', customer?.email || 'Belirtilmemiş', 0, false);
+            
+            y = tempY;
+            drawInfoRow('TC KİMLİK NO', customer?.tc || 'N/A', col2X, false);
+            y = tempY + 12;
+            drawInfoRow('EHLİYET NO', customer?.licenseNumber || 'N/A', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('ADRES', customer?.address || 'Belirtilmemiş', col2X, false);
+            
+            y = tempY + 36;
+        });
+
+        // ========== KİRALAMA BİLGİLERİ CARD ==========
+        drawCard('KİRALAMA DETAYLARI', '📋', accentOrange, 95, () => {
+            const col2X = contentWidth / 2;
+            
+            // Durum badge
+            const statusText = rental.status === 'active' ? 'AKTİF' : 'TAMAMLANDI';
+            const statusColor = rental.status === 'active' ? successGreen : textGray;
+            doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+            doc.roundedRect(pageWidth - margin - 35, y - 5, 30, 7, 3, 3, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(statusText, pageWidth - margin - 20, y - 0.5, { align: 'center' });
+            
+            let tempY = y;
+            y = tempY;
+            drawInfoRow('BAŞLANGIÇ TARİHİ', formatDate(rental.startDate), 0, false);
+            y = tempY + 12;
+            drawInfoRow('BİTİŞ TARİHİ', formatDate(rental.endDate), 0, false);
+            y = tempY + 24;
+            drawInfoRow('TOPLAM GÜN', totalDays.toString() + ' gün', 0, true);
+            
+            y = tempY;
+            drawInfoRow('ALIŞ YERİ', rental.pickupLocation || 'İstanbul', col2X, false);
+            y = tempY + 12;
+            drawInfoRow('İADE YERİ', rental.returnLocation || 'İstanbul', col2X, false);
+            y = tempY + 24;
+            drawInfoRow('GÜNLİK ÜCRET', formatPrice(dailyRate), col2X, false);
+            
+            y = tempY + 40;
+            
+            // KM Bilgileri - Görsel kutular
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+            doc.text('KİLOMETRE DETAYLARI', margin + 8, y);
+            
+            y += 8;
+            
+            const kmBoxWidth = (contentWidth - 30) / 3;
+            const kmBoxHeight = 18;
+            
+            // Teslim KM
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.roundedRect(margin + 8, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            doc.setDrawColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.setLineWidth(1);
+            doc.roundedRect(margin + 8, y, kmBoxWidth, kmBoxHeight, 3, 3, 'S');
+            
+            doc.setFontSize(8);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Teslim KM', margin + 8 + kmBoxWidth/2, y + 6, { align: 'center' });
+            
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.text(formatKm(rental.startKm), margin + 8 + kmBoxWidth/2, y + 14, { align: 'center' });
+            
+            // Ok işareti
+            doc.setFontSize(16);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text('→', margin + 8 + kmBoxWidth + 8, y + 11, { align: 'center' });
+            
+            // İade KM
+            doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+            doc.roundedRect(margin + 8 + kmBoxWidth + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            doc.setDrawColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+            doc.roundedRect(margin + 8 + kmBoxWidth + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'S');
+            
+            doc.setFontSize(8);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.setFont('helvetica', 'normal');
+            doc.text('İade KM', margin + 8 + kmBoxWidth + 16 + kmBoxWidth/2, y + 6, { align: 'center' });
+            
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(accentOrange[0], accentOrange[1], accentOrange[2]);
+            doc.text(formatKm(rental.endKm), margin + 8 + kmBoxWidth + 16 + kmBoxWidth/2, y + 14, { align: 'center' });
+            
+            // Eşittir işareti
+            doc.setFontSize(16);
+            doc.setTextColor(textGray[0], textGray[1], textGray[2]);
+            doc.text('=', margin + 8 + (kmBoxWidth + 16) * 2 + 8, y + 11, { align: 'center' });
+            
+            // Kullanılan KM
+            doc.setFillColor(successGreen[0], successGreen[1], successGreen[2]);
+            doc.roundedRect(margin + 8 + (kmBoxWidth + 16) * 2 + 16, y, kmBoxWidth, kmBoxHeight, 3, 3, 'F');
+            
+            doc.setFontSize(8);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Kullanılan KM', margin + 8 + (kmBoxWidth + 16) * 2 + 16 + kmBoxWidth/2, y + 6, { align: 'center' });
+            
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text(usedKm.toLocaleString('tr-TR'), margin + 8 + (kmBoxWidth + 16) * 2 + 16 + kmBoxWidth/2, y + 14, { align: 'center' });
+            
+            y += kmBoxHeight + 5;
+        });
+
+        // ========== FİYATLANDIRMA CARD ==========
+        drawCard('FİYATLANDIRMA', '💰', darkBlue, 70, () => {
+            // Tablo başlıkları
+            doc.setDrawColor(230, 230, 230);
+            doc.setLineWidth(0.3);
+            
+            const labelX = margin + 8;
+            const valueX = pageWidth - margin - 8;
+            
+            // Satırlar
+            const rows = [
+                { label: 'Günlük Kira Ücreti', value: formatPrice(dailyRate), bold: false },
+                { label: `Kiralama Süresi (${totalDays} gün)`, value: formatPrice(subtotal), bold: false },
+                { label: `KM Limit (${totalKmLimit} km dahil)`, value: '₺0.00', bold: false },
+                { label: `KM Aşımı (${kmExcess} km × ₺3)`, value: formatPrice(kmExcessCost), bold: false },
+                { label: 'Ek Hizmetler', value: formatPrice(extraServices), bold: false }
+            ];
+            
+            rows.forEach((row, index) => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+                doc.text(row.label, labelX, y);
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+                doc.text(row.value, valueX, y, { align: 'right' });
+                
+                y += 8;
+                
+                if (index < rows.length - 1) {
+                    doc.line(labelX, y - 3, valueX, y - 3);
+                }
+            });
+            
+            y += 2;
+            
+            // Toplam - Vurgulu
+            doc.setFillColor(primaryBlue[0], primaryBlue[1], primaryBlue[2]);
+            doc.rect(margin + 8, y - 3, contentWidth - 16, 12, 'F');
+            
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('TOPLAM TUTAR', labelX + 3, y + 4);
+            
+            doc.setFontSize(15);
+            doc.text(formatPrice(totalCost), valueX - 3, y + 4, { align: 'right' });
+            
+            y += 12;
+        });
+
+        // ========== FOOTER ==========
+        if (state.settings.pdfSettings.showFooter) {
+            y = pageHeight - 25;
+            
+            // Footer arka plan
+            doc.setFillColor(darkBlue[0], darkBlue[1], darkBlue[2]);
+            doc.rect(0, y, pageWidth, 25, 'F');
+            
+            y += 8;
+            
+            // Teşekkür mesajı
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255, 255, 255);
+            doc.text('Bizi Tercih Ettiğiniz İçin Teşekkür Ederiz!', pageWidth / 2, y, { align: 'center' });
+            
+            y += 6;
+            
+            // Şirket bilgileri
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(255, 255, 255);
+            doc.text(`${state.settings.companyInfo.name} | ${state.settings.companyInfo.address}`, pageWidth / 2, y, { align: 'center' });
+            
+            y += 5;
+            doc.text(`Tel: ${state.settings.companyInfo.phone} | Web: www.rehberotomotiv.com`, pageWidth / 2, y, { align: 'center' });
+        }
+
+        // Sözleşme numarası (sağ üst)
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'F');
+        doc.setDrawColor(224, 224, 224);
+        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'S');
+        doc.setFontSize(9);
+        doc.setTextColor(26, 35, 126);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`#${rental.id}`, 200 - margin - 25, y + 5.5, { align: 'center' });
+        
+        y += 15;
+
+        // Logo (sol üstte)
+        if (state.settings.pdfSettings.showLogo && state.settings.companyInfo.logo) {
+            try {
+                const imgFormat = state.settings.companyInfo.logo.match(/^data:image\/(png|jpe?g);base64,/) ? 
+                    (state.settings.companyInfo.logo.includes('png') ? 'PNG' : 'JPEG') : 'PNG';
+                doc.addImage(state.settings.companyInfo.logo, imgFormat, margin, y, 50, 30);
+            } catch (e) { console.error("Logo eklenemedi:", e); }
+        }
+        
+        y += 35;
+
+        // ESKİ KOD SİLİNDİ - YENİ TASARIM YUKARI
+            const startY = y;
+            
+            // Card arka plan
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'F'); // Yükseklik sonra ayarlanacak
+            doc.setDrawColor(224, 224, 224);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'S');
+            
+            // Üst mavi çizgi
+            doc.setDrawColor(26, 35, 126);
+            doc.setLineWidth(1);
+            doc.line(margin, y, margin + contentWidth, y);
+            
+            y += 8;
+            
+            // Card başlığı
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(26, 35, 126);
+            doc.text(`${icon} ${title}`, margin + 5, y);
+            
+            y += 8;
+            
+            // İçerik
+            content();
+            
+            const cardHeight = y - startY + 3;
+            // Card'ı tamamla (yükseklik düzeltmesi)
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'F');
+            doc.setDrawColor(224, 224, 224);
+            doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'S');
+            doc.setDrawColor(26, 35, 126);
+            doc.setLineWidth(1);
+            doc.line(margin, startY, margin + contentWidth, startY);
+            
+            y += 5;
+        };
+
+        // ARAÇ BİLGİLERİ CARD
+        drawCard('ARAÇ BİLGİLERİ', '🚗', () => {
+            const col1X = margin + 8;
+            const col2X = margin + contentWidth/2 + 4;
+            const labelSize = 9;
+            const valueSize = 11;
+            
+            // Sol kolon
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('MARKA', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(vehicle?.brand?.split(' ')[0] || 'N/A', col1X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('YIL', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text('2023', col1X, y);
+            
+            // Sağ kolon (y'yi resetle)
+            y -= 17;
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('MODEL', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(vehicle?.brand?.split(' ').slice(1).join(' ') || 'N/A', col2X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('PLAKA', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(vehicle?.plate || 'N/A', col2X, y);
+            
+            y += 3;
+        });
+
+        // KİRALAYAN BİLGİLERİ CARD
+        drawCard('KİRALAYAN BİLGİLERİ', '👤', () => {
+            const col1X = margin + 8;
+            const col2X = margin + contentWidth/2 + 4;
+            const labelSize = 9;
+            const valueSize = 11;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('AD SOYAD', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(customer?.name || 'N/A', col1X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('TC KİMLİK NO', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(customer?.tc || 'N/A', col1X, y);
+            
+            y -= 17;
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('TELEFON', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(customer?.phone || 'N/A', col2X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('EHLİYET NO', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(customer?.licenseNumber || 'N/A', col2X, y);
+            
+            y += 3;
+        });
+
+        // KİRALAMA BİLGİLERİ CARD
+        drawCard('KİRALAMA BİLGİLERİ', '📋', () => {
+            // Durum badge
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(margin + contentWidth - 35, y - 5, 30, 6, 3, 3, 'F');
+            doc.setDrawColor(224, 224, 224);
+            doc.roundedRect(margin + contentWidth - 35, y - 5, 30, 6, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text(rental.status === 'active' ? 'AKTİF' : 'TAMAMLANDI', margin + contentWidth - 20, y - 1, { align: 'center' });
+            
+            const col1X = margin + 8;
+            const col2X = margin + contentWidth/2 + 4;
+            const labelSize = 9;
+            const valueSize = 11;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('ALIŞ TARİHİ', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(formatDate(rental.startDate), col1X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('ALIŞ YERİ', col1X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text('İstanbul', col1X, y);
+            
+            y -= 17;
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('İADE TARİHİ', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text(formatDate(rental.endDate), col2X, y);
+            y += 7;
+            
+            doc.setFontSize(labelSize);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text('İADE YERİ', col2X, y);
+            y += 5;
+            doc.setFontSize(valueSize);
+            doc.setTextColor(33, 33, 33);
+            doc.setFont('helvetica', 'bold');
+            doc.text('İstanbul', col2X, y);
+            
+            y += 10;
+            
+            // KM Bölümü başlığı
+            doc.setFontSize(11);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text('⚡ KİLOMETRE BİLGİLERİ', margin + 8, y);
+            
+            y += 7;
+            
+            // KM Kutuları
+            const kmBoxWidth = (contentWidth - 20) / 3 - 4;
+            const kmBoxStartX = margin + 8;
+            
+            // Teslim Edilen KM
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(kmBoxStartX, y, kmBoxWidth, 15, 3, 3, 'F');
+            doc.setDrawColor(224, 224, 224);
+            doc.roundedRect(kmBoxStartX, y, kmBoxWidth, 15, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(97, 97, 97);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Teslim Edilen KM', kmBoxStartX + kmBoxWidth/2, y + 5, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text(formatKm(rental.startKm), kmBoxStartX + kmBoxWidth/2, y + 12, { align: 'center' });
+            
+            // Ok işareti
+            doc.setFontSize(16);
+            doc.setTextColor(117, 117, 117);
+            doc.text('→', kmBoxStartX + kmBoxWidth + 8, y + 10, { align: 'center' });
+            
+            // Alınan KM
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(kmBoxStartX + kmBoxWidth + 12, y, kmBoxWidth, 15, 3, 3, 'F');
+            doc.setDrawColor(224, 224, 224);
+            doc.roundedRect(kmBoxStartX + kmBoxWidth + 12, y, kmBoxWidth, 15, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(97, 97, 97);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Alınan KM', kmBoxStartX + kmBoxWidth + 12 + kmBoxWidth/2, y + 5, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text(formatKm(rental.endKm), kmBoxStartX + kmBoxWidth + 12 + kmBoxWidth/2, y + 12, { align: 'center' });
+            
+            // Eşittir işareti
+            doc.setFontSize(16);
+            doc.setTextColor(117, 117, 117);
+            doc.text('=', kmBoxStartX + (kmBoxWidth + 12) * 2 - 4, y + 10, { align: 'center' });
+            
+            // Kullanılan KM
+            doc.setFillColor(245, 245, 245);
+            doc.roundedRect(kmBoxStartX + (kmBoxWidth + 12) * 2, y, kmBoxWidth, 15, 3, 3, 'F');
+            doc.setDrawColor(224, 224, 224);
+            doc.roundedRect(kmBoxStartX + (kmBoxWidth + 12) * 2, y, kmBoxWidth, 15, 3, 3, 'S');
+            doc.setFontSize(8);
+            doc.setTextColor(97, 97, 97);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Kullanılan KM', kmBoxStartX + (kmBoxWidth + 12) * 2 + kmBoxWidth/2, y + 5, { align: 'center' });
+            doc.setFontSize(14);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text(usedKm.toLocaleString('tr-TR'), kmBoxStartX + (kmBoxWidth + 12) * 2 + kmBoxWidth/2, y + 12, { align: 'center' });
+            
+            y += 18;
+        });
+
+        // FİYATLANDIRMA CARD
+        drawCard('FİYATLANDIRMA', '💰', () => {
+            const labelX = margin + 8;
+            const valueX = margin + contentWidth - 8;
+            
+            // Tablo satırları
+            const rows = [
+                { label: 'Günlük Kira Bedeli', value: `₺${dailyRate.toLocaleString('tr-TR')}` },
+                { label: 'Kiralama Süresi', value: `${totalDays} gün` },
+                { label: 'KM Limit Aşımı', value: `₺${kmExcessCost.toLocaleString('tr-TR')}` },
+                { label: 'Ek Hizmetler', value: `₺${extraServices.toLocaleString('tr-TR')}` }
+            ];
+            
+            doc.setFontSize(10);
+            rows.forEach((row, index) => {
+                doc.setTextColor(97, 97, 97);
+                doc.setFont('helvetica', 'normal');
+                doc.text(row.label, labelX, y);
+                doc.setTextColor(33, 33, 33);
+                doc.setFont('helvetica', 'bold');
+                doc.text(row.value, valueX, y, { align: 'right' });
+                y += 6;
+                
+                // Ayırıcı çizgi (son satır hariç)
+                if (index < rows.length - 1) {
+                    doc.setDrawColor(224, 224, 224);
+                    doc.setLineWidth(0.2);
+                    doc.line(labelX, y - 2, valueX, y - 2);
+                }
+            });
+            
+            y += 3;
+            
+            // Toplam
+            doc.setDrawColor(224, 224, 224);
+            doc.setLineWidth(0.3);
+            doc.line(labelX, y - 2, valueX, y - 2);
+            y += 3;
+            
+            doc.setFontSize(13);
+            doc.setTextColor(26, 35, 126);
+            doc.setFont('helvetica', 'bold');
+            doc.text('TOPLAM TUTAR', labelX, y);
+            doc.text(`₺${totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, valueX, y, { align: 'right' });
+            
+            y += 3;
+        });
+
+        // Footer
+        if (state.settings.pdfSettings.showFooter) {
+            y = 267 - 15;
+            doc.setFontSize(9);
+            doc.setTextColor(117, 117, 117);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`© 2025 ${state.settings.companyInfo.name.toUpperCase()} | Tüm hakları saklıdır.`, 100, y, { align: 'center' });
+            y += 4;
+            doc.text(`${state.settings.companyInfo.address} | ${state.settings.companyInfo.phone}`, 100, y, { align: 'center' });
         }
 
         doc.output('dataurlnewwindow');
@@ -3581,6 +4500,7 @@ function showToast(message: string, type: 'success' | 'error' = 'success', durat
 
 // Uygulama ilk yüklendiğinde verileri localStorage'dan yükleme fonksiyonu
 function loadDataFromLocalStorage() {
+    console.log('💾 loadDataFromLocalStorage() fonksiyonu çağrıldı');
     const savedData = localStorage.getItem('rehberOtomotivData');
     if (savedData) {
         try {
@@ -3600,9 +4520,35 @@ function loadDataFromLocalStorage() {
             
             // Aktiviteler, JSON'dan yüklenirken Date objesine geri çevrilmeli.
             if (appData.activitiesData && Array.isArray(appData.activitiesData)) {
-                activitiesData = appData.activitiesData.map(activity => 
-                    activity && activity.time ? {...activity, time: new Date(activity.time)} : activity
-                ).filter(Boolean); // Bozuk veya null kayıtları temizle
+                activitiesData = appData.activitiesData.map(activity => {
+                    if (!activity) return null;
+                    
+                    try {
+                        let parsedDate = new Date();
+                        
+                        // Önce time, sonra date kontrolü
+                        if (activity.time) {
+                            parsedDate = new Date(activity.time);
+                        } else if (activity.date) {
+                            parsedDate = new Date(activity.date);
+                        }
+                        
+                        // Geçersiz tarih kontrolü
+                        if (isNaN(parsedDate.getTime())) {
+                            console.warn('⚠️ Geçersiz aktivite tarihi:', activity);
+                            parsedDate = new Date();
+                        }
+                        
+                        return {
+                            icon: activity.icon || 'fa-solid fa-circle-info',
+                            message: activity.message || 'Bilinmeyen aktivite',
+                            time: parsedDate
+                        };
+                    } catch (e) {
+                        console.error('❌ Aktivite parse hatası:', activity, e);
+                        return null;
+                    }
+                }).filter(Boolean); // Bozuk veya null kayıtları temizle
             }
             
             // State'e ait verileri yükle
@@ -3717,11 +4663,134 @@ window.addEventListener('beforeunload', (e) => {
     autoBackupToFirebase();
 });
 
-// Initial render
-loadDataFromLocalStorage(); // Uygulama açılırken verileri yükle
-renderApp();
+// ELECTRON FIX: DOM yüklenene kadar bekle
+if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+        console.log('⏳ DOM loading, DOMContentLoaded bekleniyor...');
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        console.log('✅ DOM zaten yüklü, hemen başlatılıyor...');
+        initializeApp();
+    }
+}
 
-// Auto-sync on app start (after initial render)
-setTimeout(() => {
-    autoSyncWithFirebase();
-}, 1000); // 1 saniye bekle ki uygulama tam yüklensin
+function initializeApp() {
+    console.log('🏁 Uygulama başlatılıyor...');
+    console.log('📍 document.body:', document.body);
+    console.log('📍 document.readyState:', document.readyState);
+    
+    try {
+        loadDataFromLocalStorage(); // Uygulama açılırken verileri yükle
+        
+        // Ensure body is ready before rendering
+        if (!document.body) {
+            console.warn('⚠️ document.body henüz hazır değil, body load bekleniyor...');
+            window.addEventListener('load', () => {
+                console.log('✅ Window load event - body hazır');
+                renderApp();
+            });
+            return;
+        }
+        
+        renderApp();
+        console.log('✅ Uygulama başarıyla başlatıldı!');
+        
+        // 🔥 OTOMATIK FIREBASE SYNC - Uygulama açılırken Firebase'den veri yükle
+        if (state.settings?.firebaseEnabled && state.settings?.firebaseAutoSync) {
+            setTimeout(async () => {
+                console.log('🔄 Otomatik Firebase sync başlatılıyor...');
+                try {
+                    // Firebase'i başlat
+                    if (typeof initializeFirebase === 'function') {
+                        await initializeFirebase(state.settings?.firebaseConfig);
+                    }
+                    
+                    // Veri çek
+                    if (typeof fetchDataFromFirebase === 'function') {
+                        const data = await fetchDataFromFirebase();
+                        
+                        if (data) {
+                            // Firebase'den gelen verileri yükle
+                            if (data.vehiclesData) {
+                                vehiclesData.length = 0;
+                                vehiclesData.push(...data.vehiclesData);
+                            }
+                            if (data.customersData) {
+                                customersData.length = 0;
+                                customersData.push(...data.customersData);
+                            }
+                            if (data.rentalsData) {
+                                rentalsData.length = 0;
+                                rentalsData.push(...data.rentalsData);
+                            }
+                            if (data.reservationsData) {
+                                reservationsData.length = 0;
+                                reservationsData.push(...data.reservationsData);
+                            }
+                            if (data.maintenanceData) {
+                                maintenanceData.length = 0;
+                                maintenanceData.push(...data.maintenanceData);
+                            }
+                            if (data.activitiesData && Array.isArray(data.activitiesData)) {
+                                activitiesData.length = 0;
+                                const convertedActivities = data.activitiesData.map((activity: any) => {
+                                    // Date objesini güvenli şekilde parse et
+                                    let parsedDate = new Date();
+                                    try {
+                                        // Önce time, sonra date kontrolü yap
+                                        if (activity.time) {
+                                            parsedDate = activity.time instanceof Date ? activity.time : new Date(activity.time);
+                                        } else if (activity.date) {
+                                            parsedDate = activity.date instanceof Date ? activity.date : new Date(activity.date);
+                                        }
+                                        
+                                        // Geçersiz tarih kontrolü
+                                        if (isNaN(parsedDate.getTime())) {
+                                            parsedDate = new Date();
+                                        }
+                                    } catch (e) {
+                                        console.warn('Date parse hatası:', activity);
+                                        parsedDate = new Date();
+                                    }
+                                    return {
+                                        icon: activity.icon || 'fa-solid fa-circle-info',
+                                        message: activity.message || 'Bilinmeyen aktivite',
+                                        time: parsedDate
+                                    };
+                                });
+                                activitiesData.push(...convertedActivities);
+                            }
+                            
+                            // Son yükleme saatini güncelle
+                            const now = new Date();
+                            const timeString = now.toLocaleTimeString('tr-TR', { 
+                                hour: '2-digit', 
+                                minute: '2-digit', 
+                                second: '2-digit' 
+                            });
+                            
+                            setState({ 
+                                settings: { 
+                                    ...state.settings, 
+                                    lastSyncDate: data.lastUpdate || new Date().toISOString(),
+                                    lastSyncTime: timeString
+                                } 
+                            });
+                            
+                            showToast('✅ Firebase verisi yüklendi!', 'success');
+                            console.log('✅ Firebase otomatik sync tamamlandı!', {
+                                vehicles: vehiclesData.length,
+                                customers: customersData.length,
+                                time: timeString
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Otomatik Firebase sync hatası:', error);
+                }
+            }, 1500); // 1.5 saniye bekle ki Firebase SDK yüklensin
+        }
+    } catch (error) {
+        console.error('❌ Uygulama başlatma hatası:', error);
+    }
+}
