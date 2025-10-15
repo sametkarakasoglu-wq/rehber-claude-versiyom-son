@@ -15,3 +15,12 @@ node_modules
 
 #!.yarn/cache
 .pnp.*
+
+# Build outputs
+dist/
+release-final/
+.firebase/
+
+# Development
+.vite/
+*.log
