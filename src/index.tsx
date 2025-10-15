@@ -2113,7 +2113,15 @@ const App = () => {
   }
 
   return `
-    <nav class="sidebar">
+    <!-- Hamburger Menu Button (Mobile) -->
+    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menüyü Aç/Kapat">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <nav class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-logo">
           ${state.settings.companyInfo.logo ? `
@@ -2201,6 +2209,55 @@ function renderApp() {
 function attachEventListeners() {
     try {
         // console.log('Attaching event listeners...');
+    
+    // Mobile Menu Toggle
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
+    if (mobileMenuToggle && sidebar && sidebarOverlay) {
+        // Toggle mobile menu
+        mobileMenuToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            sidebar.classList.toggle('mobile-open');
+            sidebarOverlay.classList.toggle('active');
+            
+            // Update icon
+            const icon = mobileMenuToggle.querySelector('i');
+            if (icon) {
+                if (sidebar.classList.contains('mobile-open')) {
+                    icon.className = 'fa-solid fa-times';
+                } else {
+                    icon.className = 'fa-solid fa-bars';
+                }
+            }
+        });
+        
+        // Close menu when clicking overlay
+        sidebarOverlay.addEventListener('click', () => {
+            sidebar.classList.remove('mobile-open');
+            sidebarOverlay.classList.remove('active');
+            const icon = mobileMenuToggle.querySelector('i');
+            if (icon) {
+                icon.className = 'fa-solid fa-bars';
+            }
+        });
+        
+        // Close menu when clicking nav link (mobile)
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('mobile-open');
+                    sidebarOverlay.classList.remove('active');
+                    const icon = mobileMenuToggle.querySelector('i');
+                    if (icon) {
+                        icon.className = 'fa-solid fa-bars';
+                    }
+                }
+            });
+        });
+    }
+    
     // Theme switcher
     document.getElementById('theme-toggle')?.addEventListener('change', (e) => {
         const isChecked = (e.target as HTMLInputElement).checked;

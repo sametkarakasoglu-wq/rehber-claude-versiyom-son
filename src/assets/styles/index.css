@@ -2757,7 +2757,7 @@ input:checked + .slider:before {
     position: fixed;
     top: 16px;
     left: 16px;
-    z-index: 1001;
+    z-index: 1002; /* Sidebar ve overlay'den daha üstte */
     background: var(--primary-color);
     color: white;
     border: none;
@@ -2824,10 +2824,16 @@ input:checked + .slider:before {
         box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
         transition: left 0.3s ease;
         overflow-y: auto;
+        padding-top: 70px; /* Hamburger menü için üstten boşluk */
     }
 
     .sidebar.mobile-open {
         left: 0; /* Açıldığında görünür */
+    }
+    
+    /* Sidebar açıkken hamburger menü X olur */
+    .sidebar.mobile-open + .mobile-menu-toggle {
+        left: 240px; /* Sidebar'ın yanına kayar */
     }
 
     .sidebar-overlay {
@@ -2998,6 +3004,42 @@ input:checked + .slider:before {
 
     .page-header h1 {
         font-size: 20px;
+    }
+    
+    /* Tablolar mobilde kaydırılabilir */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    table {
+        min-width: 600px;
+    }
+    
+    /* Butonlar mobilde daha büyük (kolay tıklama) */
+    .btn {
+        min-height: 44px;
+        font-size: 14px;
+        padding: 12px 20px;
+    }
+    
+    /* Form elementleri mobilde daha büyük */
+    input, select, textarea {
+        min-height: 44px;
+        font-size: 16px; /* iOS zoom'u önlemek için */
+    }
+    
+    /* Stat kartları mobilde daha kompakt */
+    .stat-card {
+        padding: 12px;
+    }
+    
+    .stat-card h3 {
+        font-size: 18px;
+    }
+    
+    .stat-card p {
+        font-size: 12px;
     }
 
     .page-header p {
