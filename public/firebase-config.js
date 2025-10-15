@@ -8,6 +8,7 @@
 let firebaseApp = null;
 let firebaseDatabase = null;
 let firebaseMessaging = null;
+let firebaseStorage = null;
 let isFirebaseInitialized = false;
 
 // Default Firebase configuration
@@ -41,6 +42,14 @@ function initializeFirebase(config = null) {
     if (typeof firebase !== 'undefined') {
       firebaseApp = firebase.initializeApp(finalConfig);
       firebaseDatabase = firebase.database();
+      
+      // Initialize Firebase Storage
+      try {
+        firebaseStorage = firebase.storage();
+        console.log('✅ Firebase Storage başlatıldı!');
+      } catch (storageError) {
+        console.warn('⚠️ Firebase Storage başlatılamadı:', storageError.message);
+      }
       
       // Initialize Firebase Cloud Messaging
       try {
@@ -108,6 +117,7 @@ async function sendDataToFirebase(data) {
     updates['/reservations'] = data.reservationsData || [];
     updates['/maintenance'] = data.maintenanceData || [];
     updates['/activities'] = data.activitiesData || [];
+    updates['/documents'] = data.documentsData || []; // ✅ Dosyaları ekle
     updates['/settings'] = data.settings || {};
     updates['/lastUpdate'] = new Date().toISOString();
 
@@ -565,4 +575,96 @@ async function initializePushNotifications() {
     }
     
     return token;
+}
+
+/**
+ * Upload file to Firebase Storage
+ * @param {File} file - Dosya objesi
+ * @param {string} category - Kategori (Sigortalar, Muayeneler, vb.)
+ * @param {Function} progressCallback - Progress callback (0-100)
+ * @returns {Promise<string>} - Download URL
+ */
+async function uploadFileToStorage(file, category = 'Diğer', progressCallback = null) {
+    if (!firebaseStorage) {
+        throw new Error('Firebase Storage başlatılmamış!');
+    }
+
+    try {
+        // Dosya yolu oluştur: documents/kategori/timestamp_filename
+        const timestamp = Date.now();
+        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filePath = `documents/${category}/${timestamp}_${sanitizedFileName}`;
+        
+        // Storage referansı oluştur
+        const storageRef = firebaseStorage.ref();
+        const fileRef = storageRef.child(filePath);
+        
+        console.log(`📤 Firebase Storage'a yükleniyor: ${filePath}`);
+        
+        // Dosyayı yükle
+        const uploadTask = fileRef.put(file);
+        
+        // Progress tracking
+        return new Promise((resolve, reject) => {
+            uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                    // Progress callback
+                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                    if (progressCallback) {
+                        progressCallback(progress);
+                    }
+                    console.log(`⏳ Yükleme: ${progress}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)`);
+                },
+                (error) => {
+                    // Error callback
+                    console.error('❌ Firebase Storage yükleme hatası:', error);
+                    reject(error);
+                },
+                async () => {
+                    // Success callback
+                    try {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        console.log(`✅ Dosya yüklendi: ${downloadURL}`);
+                        resolve(downloadURL);
+                    } catch (error) {
+                        console.error('❌ Download URL alınamadı:', error);
+                        reject(error);
+                    }
+                }
+            );
+        });
+    } catch (error) {
+        console.error('❌ uploadFileToStorage hatası:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete file from Firebase Storage
+ * @param {string} fileUrl - Firebase Storage download URL
+ */
+async function deleteFileFromStorage(fileUrl) {
+    if (!firebaseStorage) {
+        throw new Error('Firebase Storage başlatılmamış!');
+    }
+
+    try {
+        // URL'den storage referansı oluştur
+        const storageRef = firebaseStorage.refFromURL(fileUrl);
+        
+        console.log(`🗑️ Firebase Storage'dan siliniyor: ${storageRef.fullPath}`);
+        
+        await storageRef.delete();
+        console.log('✅ Dosya Firebase Storage\'dan silindi');
+        return true;
+    } catch (error) {
+        console.error('❌ Firebase Storage silme hatası:', error);
+        // Dosya bulunamadıysa hata verme (zaten silinmiş olabilir)
+        if (error.code === 'storage/object-not-found') {
+            console.warn('⚠️ Dosya zaten silinmiş');
+            return true;
+        }
+        throw error;
+    }
 }

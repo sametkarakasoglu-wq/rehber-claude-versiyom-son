@@ -8,14 +8,10 @@ declare var firebase: any;
 
 console.log('🚀 index.tsx başladı yüklenmeye...');
 
-/**
- * Firebase Configuration and Initialization
- * This file handles Firebase setup and provides sync functions
- */
-
 // Firebase will be imported from CDN in index.html
 let firebaseApp = null;
 let firebaseDatabase = null;
+let firebaseStorage = null;
 let isFirebaseInitialized = false;
 
 // Default Firebase configuration
@@ -46,6 +42,15 @@ function initializeFirebase(config = null) {
     if (typeof firebase !== 'undefined') {
       firebaseApp = firebase.initializeApp(finalConfig);
       firebaseDatabase = firebase.database();
+      
+      // Initialize Firebase Storage
+      try {
+        firebaseStorage = firebase.storage();
+        console.log('✅ Firebase Storage başlatıldı!');
+      } catch (storageError) {
+        console.warn('⚠️ Firebase Storage başlatılamadı:', storageError.message);
+      }
+      
       isFirebaseInitialized = true;
       console.log('✅ Firebase başarıyla başlatıldı!');
       return true;
@@ -194,12 +199,20 @@ function removeFirebaseListener(ref) {
 // declare function sendDataToFirebase(data: any): Promise<void>;
 // declare function loadDataFromFirebase(): Promise<any>;
 
+// 🔒 Event listener guard - prevent duplicate listeners
+let eventListenersAttached = false;
+
 // Simple pseudo-ReactDOM render function
 function render(element: string, container: HTMLElement | null) {
   if (container) {
     container.innerHTML = element;
-    // Add event listeners after rendering
-    attachEventListeners();
+    
+    // ⚡ CRITICAL FIX: Attach event listeners ONLY ONCE
+    if (!eventListenersAttached) {
+      console.log('🔗 Event listeners ilk kez bağlanıyor...');
+      attachEventListeners();
+      eventListenersAttached = true;
+    }
   }
 }
 // State management
@@ -242,18 +255,19 @@ let state = {
         notif_type_insurance: true,
         notif_type_inspection: true,
         notif_type_activity: true,
-        // Firebase Settings
+        // Firebase Settings - Varsayılan config ile dolduruldu
         firebaseConfig: {
-            apiKey: '',
-            authDomain: '',
-            databaseURL: '',
-            projectId: '',
-            storageBucket: '',
-            messagingSenderId: '',
-            appId: ''
+            apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
+            authDomain: "rehber-filo.firebaseapp.com",
+            databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "rehber-filo",
+            storageBucket: "rehber-filo.firebasestorage.app",
+            messagingSenderId: "1022169726073",
+            appId: "1:1022169726073:web:584648469dd7854248a8a8"
         },
-        firebaseEnabled: false,
-        firebaseAutoSync: false,
+        firebaseEnabled: true, // Firebase'i varsayılan olarak aktifleştir
+        firebaseAutoSync: true, // Otomatik senkronizasyonu da aktifleştir
+        firebaseMasterPassword: '1259', // 🔒 Varsayılan master password
         // PDF Settings
         companyInfo: {
             name: 'Rehber Rent a Car',
@@ -272,15 +286,21 @@ let state = {
     }
 };
 
+// 🔒 Render guard - concurrent render prevention
+let isRendering = false;
+
 // State update function
-function setState(newState: Partial<typeof state>) {
+async function setState(newState: Partial<typeof state>, skipRender: boolean = false) {
   state = { ...state, ...newState };
-  saveDataToLocalStorage(); // ÖNCE veriyi kaydet. Bu, eklenti çakışmalarını önler.
-  renderApp();
+  await saveDataToLocalStorage(); // ÖNCE veriyi kaydet. Bu, eklenti çakışmalarını önler.
+  
+  if (!skipRender) {
+    renderApp();
+  }
 }
 
 // Verileri localStorage'a kaydetme fonksiyonu
-function saveDataToLocalStorage() {
+async function saveDataToLocalStorage() {
   try {
     const appData = {
       vehiclesData,
@@ -293,9 +313,22 @@ function saveDataToLocalStorage() {
       readNotifications: state.readNotifications,
       settings: state.settings,
     };
+    
+    // LocalStorage'a kaydet (backup için)
     localStorage.setItem('rehberOtomotivData', JSON.stringify(appData));
+    
+    // Firebase'e kaydet (eğer aktifse)
+    if (state.settings?.firebaseEnabled && typeof sendDataToFirebase === 'function') {
+      try {
+        await sendDataToFirebase(appData);
+        console.log('✅ Veriler Firebase\'e kaydedildi!');
+      } catch (firebaseError) {
+        console.warn('⚠️ Firebase kaydetme hatası:', firebaseError);
+        // Firebase hatası olsa bile localStorage'a kaydetmeye devam et
+      }
+    }
   } catch (error) {
-    console.error("!!! HATA: Veri localStorage'a kaydedilirken bir sorun oluştu:", error);
+    console.error("!!! HATA: Veri kaydedilirken bir sorun oluştu:", error);
   }
 }
 
@@ -1046,6 +1079,25 @@ const MaintenancePage = (): string => {
 
 const SettingsPage = (): string => { // Tamamen yeniden yazıldı
 
+  // 🔒 NULL CHECK: state.settings kontrolü
+  if (!state.settings) {
+    return `
+      <header class="page-header">
+          <h1>Ayarlar</h1>
+          <p>Uygulama ayarları yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.</p>
+      </header>
+      <div class="error-message" style="padding: 20px; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; margin: 20px 0;">
+          <i class="fa-solid fa-exclamation-triangle" style="color: #dc2626;"></i>
+          <strong>Ayarlar yüklenemedi:</strong> state.settings tanımlı değil. Uygulamayı yeniden başlatmayı deneyin.
+      </div>
+    `;
+  }
+
+  // 🔒 Güvenli değişken tanımlamaları - nested objeler için
+  const companyInfo = state.settings.companyInfo || {};
+  const pdfSettings = state.settings.pdfSettings || {};
+  const firebaseConfig = state.settings.firebaseConfig || {};
+
   const createSettingCard = (title: string, content: string) => `
       <div class="setting-content-card">
           <h4>${title}</h4>
@@ -1073,10 +1125,10 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           title: 'Gösterge Paneli',
           content: `
               ${createSettingCard('Metrik Görünürlüğü', `
-                  ${createCheckbox('db_metric_total', 'Toplam Araç Kartı', state.settings.db_metric_total)}
-                  ${createCheckbox('db_metric_rented', 'Aktif Kiralama Kartı', state.settings.db_metric_rented)}
-                  ${createCheckbox('db_metric_maintenance', 'Bakımdaki Araçlar Kartı', state.settings.db_metric_maintenance)}
-                  ${createCheckbox('db_metric_income', 'Aylık Gelir Kartı', state.settings.db_metric_income)}
+                  ${createCheckbox('db_metric_total', 'Toplam Araç Kartı', state.settings?.db_metric_total ?? true)}
+                  ${createCheckbox('db_metric_rented', 'Aktif Kiralama Kartı', state.settings?.db_metric_rented ?? true)}
+                  ${createCheckbox('db_metric_maintenance', 'Bakımdaki Araçlar Kartı', state.settings?.db_metric_maintenance ?? true)}
+                  ${createCheckbox('db_metric_income', 'Aylık Gelir Kartı', state.settings?.db_metric_income ?? true)}
               `)}
               ${createSettingCard('Panel Görünürlüğü', `
                   <p class="setting-description">Ana sayfadaki panellerin görünürlüğünü yönetin.</p>
@@ -1093,13 +1145,13 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           content: `
               ${createSettingCard('Hatırlatma Süresi', `
                   <p class="setting-description">Sigorta ve muayene gibi uyarıların kaç gün önceden gösterileceğini belirleyin.</p>
-                  <input type="number" class="setting-input" data-setting-key="reminder_days" value="${state.settings.reminder_days}">
+                  <input type="number" class="setting-input" data-setting-key="reminder_days" value="${state.settings?.reminder_days ?? 30}">
               `)}
               ${createSettingCard('Araç Kartı Butonları', `
                   <p class="setting-description">Araçlar sayfasındaki kartlarda görünecek işlem butonlarını seçin.</p>
-                  ${createCheckbox('vehicle_btn_rent', 'Kirala Butonu', state.settings.vehicle_btn_rent)}
-                  ${createCheckbox('vehicle_btn_checkin', 'Teslim Al Butonu', state.settings.vehicle_btn_checkin)}
-                  ${createCheckbox('vehicle_btn_edit', 'Düzenle Butonu', state.settings.vehicle_btn_edit)}
+                  ${createCheckbox('vehicle_btn_rent', 'Kirala Butonu', state.settings?.vehicle_btn_rent ?? true)}
+                  ${createCheckbox('vehicle_btn_checkin', 'Teslim Al Butonu', state.settings?.vehicle_btn_checkin ?? true)}
+                  ${createCheckbox('vehicle_btn_edit', 'Düzenle Butonu', state.settings?.vehicle_btn_edit ?? true)}
               `)}
           `
       },
@@ -1109,9 +1161,9 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           content: `
               ${createSettingCard('Bildirim Türleri', `
                   <p class="setting-description">Hangi durumlarda bildirim almak istediğinizi seçin.</p>
-                  ${createCheckbox('notif_type_insurance', 'Sigorta Bitiş Uyarısı', state.settings.notif_type_insurance)}
-                  ${createCheckbox('notif_type_inspection', 'Muayene Bitiş Uyarısı', state.settings.notif_type_inspection)}
-                  ${createCheckbox('notif_type_activity', 'Yeni Sistem Aktiviteleri', state.settings.notif_type_activity)}
+                  ${createCheckbox('notif_type_insurance', 'Sigorta Bitiş Uyarısı', state.settings?.notif_type_insurance ?? true)}
+                  ${createCheckbox('notif_type_inspection', 'Muayene Bitiş Uyarısı', state.settings?.notif_type_inspection ?? true)}
+                  ${createCheckbox('notif_type_activity', 'Yeni Sistem Aktiviteleri', state.settings?.notif_type_activity ?? true)}
               `)}
           `
       },
@@ -1121,13 +1173,13 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           content: `
               ${createSettingCard('Şirket Bilgileri', `
                   <p class="setting-description">Raporlarda görünecek şirket bilgilerini buradan düzenleyebilirsiniz.</p>
-                  <div class="form-group" style="margin-bottom: 12px;"><label>Şirket Ünvanı</label><input type="text" class="setting-input" data-company-key="name" value="${state.settings.companyInfo.name}"></div>
-                  <div class="form-group" style="margin-bottom: 12px;"><label>Adres</label><input type="text" class="setting-input" data-company-key="address" value="${state.settings.companyInfo.address}"></div>
+                  <div class="form-group" style="margin-bottom: 12px;"><label>Şirket Ünvanı</label><input type="text" class="setting-input" data-company-key="name" value="${companyInfo.name || 'Rehber Rent a Car'}"></div>
+                  <div class="form-group" style="margin-bottom: 12px;"><label>Adres</label><input type="text" class="setting-input" data-company-key="address" value="${companyInfo.address || 'Örnek Mah. Test Sk. No:1, İstanbul'}"></div>
                   <div class="form-row" style="margin-bottom: 12px;">
-                      <div class="form-group"><label>Telefon</label><input type="text" class="setting-input" data-company-key="phone" value="${state.settings.companyInfo.phone}"></div>
-                      <div class="form-group"><label>E-posta</label><input type="email" class="setting-input" data-company-key="email" value="${state.settings.companyInfo.email}"></div>
+                      <div class="form-group"><label>Telefon</label><input type="text" class="setting-input" data-company-key="phone" value="${companyInfo.phone || '0212 123 45 67'}"></div>
+                      <div class="form-group"><label>E-posta</label><input type="email" class="setting-input" data-company-key="email" value="${companyInfo.email || 'info@rehberrent.com'}"></div>
                   </div>
-                  <div class="form-group"><label>IBAN / Hesap Bilgileri</label><input type="text" class="setting-input" data-company-key="iban" value="${state.settings.companyInfo.iban}"></div>
+                  <div class="form-group"><label>IBAN / Hesap Bilgileri</label><input type="text" class="setting-input" data-company-key="iban" value="${companyInfo.iban || 'TR00 0000 0000 0000 0000 0000'}"></div>
               `)}
               ${createSettingCard('Logo ve Görünüm', `
                   <div class="file-upload-group" style="padding:0; border:0; background: transparent;">
@@ -1135,9 +1187,9 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
                           <span><i class="fa-solid fa-image"></i> Logo Yükle (PNG/JPG)</span>
                           <input type="file" id="companyLogoFile" accept=".png,.jpg,.jpeg">
                       </div>
-                      ${state.settings.companyInfo.logo ? `
+                      ${companyInfo.logo ? `
                         <div class="logo-preview-container">
-                            <img src="${state.settings.companyInfo.logo}" alt="Logo Önizleme" class="logo-preview-img"/>
+                            <img src="${companyInfo.logo}" alt="Logo Önizleme" class="logo-preview-img"/>
                             <button id="remove-logo-btn" class="btn-remove-logo" title="Logoyu Kaldır"><i class="fa-solid fa-trash"></i></button>
                         </div>
                       ` : ''}
@@ -1148,16 +1200,16 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
                           <span><i class="fa-solid fa-image"></i> PDF Arka Planı (PNG/JPG)</span>
                           <input type="file" id="companyPdfBackgroundFile" accept=".png,.jpg,.jpeg">
                       </div>
-                      ${state.settings.companyInfo.pdfBackground ? `
+                      ${companyInfo.pdfBackground ? `
                         <div class="logo-preview-container">
-                            <img src="${state.settings.companyInfo.pdfBackground}" alt="Arka Plan Önizleme" class="logo-preview-img"/>
+                            <img src="${companyInfo.pdfBackground}" alt="Arka Plan Önizleme" class="logo-preview-img"/>
                             <button id="remove-pdf-background-btn" class="btn-remove-logo" title="Arka Planı Kaldır"><i class="fa-solid fa-trash"></i></button>
                         </div>
                       ` : ''}
                   </div>
-                  ${createCheckbox('pdf_show_logo', 'Logoyu Raporlarda Göster', state.settings.pdfSettings.showLogo)}
-                  ${createCheckbox('pdf_show_background', 'Arka Planı Raporlarda Göster', state.settings.pdfSettings.showBackground)}
-                  ${createCheckbox('pdf_show_footer', 'Alt Bilgiyi (Adres, Tel vb.) Göster', state.settings.pdfSettings.showFooter)}
+                  ${createCheckbox('pdf_show_logo', 'Logoyu Raporlarda Göster', pdfSettings.showLogo ?? true)}
+                  ${createCheckbox('pdf_show_background', 'Arka Planı Raporlarda Göster', pdfSettings.showBackground ?? true)}
+                  ${createCheckbox('pdf_show_footer', 'Alt Bilgiyi (Adres, Tel vb.) Göster', pdfSettings.showFooter ?? true)}
               `)}
           `
       },
@@ -1189,36 +1241,55 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
                   <p class="setting-description">Firebase Realtime Database ile verilerinizi senkronize edin. Farklı cihazlardan erişim sağlayın.</p>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>API Key <span style="color: #ef4444;">*</span></label>
-                      <input type="text" class="setting-input" id="firebase-apiKey" value="${state.settings?.firebaseConfig?.apiKey || ''}" placeholder="AIzaSyD...">
+                      <input type="text" class="setting-input" id="firebase-apiKey" value="${firebaseConfig.apiKey || ''}" placeholder="AIzaSyD...">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Auth Domain</label>
-                      <input type="text" class="setting-input" id="firebase-authDomain" value="${state.settings?.firebaseConfig?.authDomain || ''}" placeholder="project-id.firebaseapp.com">
+                      <input type="text" class="setting-input" id="firebase-authDomain" value="${firebaseConfig.authDomain || ''}" placeholder="project-id.firebaseapp.com">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Database URL <span style="color: #ef4444;">*</span></label>
-                      <input type="text" class="setting-input" id="firebase-databaseURL" value="${state.settings?.firebaseConfig?.databaseURL || ''}" placeholder="https://project-id.firebaseio.com">
+                      <input type="text" class="setting-input" id="firebase-databaseURL" value="${firebaseConfig.databaseURL || ''}" placeholder="https://project-id.firebaseio.com">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Project ID</label>
-                      <input type="text" class="setting-input" id="firebase-projectId" value="${state.settings?.firebaseConfig?.projectId || ''}" placeholder="project-id">
+                      <input type="text" class="setting-input" id="firebase-projectId" value="${firebaseConfig.projectId || ''}" placeholder="project-id">
                   </div>
                   <div class="form-group" style="margin-bottom: 12px;">
                       <label>Storage Bucket</label>
-                      <input type="text" class="setting-input" id="firebase-storageBucket" value="${state.settings?.firebaseConfig?.storageBucket || ''}" placeholder="project-id.appspot.com">
+                      <input type="text" class="setting-input" id="firebase-storageBucket" value="${firebaseConfig.storageBucket || ''}" placeholder="project-id.appspot.com">
                   </div>
                   <div class="form-row" style="margin-bottom: 12px;">
                       <div class="form-group">
                           <label>Messaging Sender ID</label>
-                          <input type="text" class="setting-input" id="firebase-messagingSenderId" value="${state.settings?.firebaseConfig?.messagingSenderId || ''}" placeholder="123456789">
+                          <input type="text" class="setting-input" id="firebase-messagingSenderId" value="${firebaseConfig.messagingSenderId || ''}" placeholder="123456789">
                       </div>
                       <div class="form-group">
                           <label>App ID</label>
-                          <input type="text" class="setting-input" id="firebase-appId" value="${state.settings?.firebaseConfig?.appId || ''}" placeholder="1:123:web:abc">
+                          <input type="text" class="setting-input" id="firebase-appId" value="${firebaseConfig.appId || ''}" placeholder="1:123:web:abc">
                       </div>
                   </div>
                   ${createCheckbox('firebase_enabled', 'Firebase Senkronizasyonu Aktif', state.settings?.firebaseEnabled || false)}
                   ${createCheckbox('firebase_auto_sync', 'Otomatik Senkronizasyon (Uygulama Açılışında)', state.settings?.firebaseAutoSync || false)}
+                  
+                  <div class="form-group" style="margin-top: 16px; padding: 12px; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px;">
+                      <label style="display: flex; align-items: center; gap: 8px; color: #92400e; font-weight: 600;">
+                          <i class="fa-solid fa-lock"></i> Ana Şifre (Güvenlik)
+                      </label>
+                      <input 
+                          type="password" 
+                          class="setting-input" 
+                          id="firebase-master-password" 
+                          data-setting-key="firebaseMasterPassword"
+                          value="${state.settings?.firebaseMasterPassword || ''}"
+                          placeholder="Firebase senkronizasyonu için ana şifre"
+                          style="margin-top: 8px;"
+                      >
+                      <small style="display: block; margin-top: 8px; color: #92400e; font-size: 12px;">
+                          <i class="fa-solid fa-info-circle"></i> Bu şifre olmadan Firebase'den veri çekilemez. Yabancı kişilerin verilerinize erişmesini engeller.
+                      </small>
+                  </div>
+                  
                   <div class="backup-restore-buttons" style="margin-top: 16px;">
                       <button class="btn btn-primary" id="btn-test-firebase" ${!state.settings?.firebaseConfig?.apiKey || !state.settings?.firebaseConfig?.databaseURL ? 'disabled' : ''}>
                           <i class="fa-solid fa-plug"></i> Bağlantıyı Test Et
@@ -2168,6 +2239,13 @@ const App = () => {
 };
 
 function renderApp() {
+  // 🔒 Prevent concurrent renders
+  if (isRendering) {
+    console.log('⚠️ renderApp() zaten çalışıyor, atlandı');
+    return;
+  }
+  
+  isRendering = true;
   console.log('🎨 renderApp() fonksiyonu çağrıldı');
   try {
     // KRITIK FIX: activitiesData'yı temizle
@@ -2212,6 +2290,9 @@ function renderApp() {
     if (root) {
         root.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h1>Uygulama Çizilirken Kritik Bir Hata Oluştu</h1><p>Lütfen konsolu (F12) kontrol edin.</p><pre>${error.message}</pre></div>`;
     }
+  } finally {
+    // 🔓 Release render lock
+    isRendering = false;
   }
 }
 
@@ -2362,7 +2443,19 @@ function attachEventListeners() {
         const newCompanyInfo = { ...state.settings.companyInfo, pdfBackground: null };
         setState({ settings: { ...state.settings, companyInfo: newCompanyInfo } });
     });
-
+    
+    // Firebase Master Password - FIX: Stop propagation to prevent accordion from closing
+    const masterPasswordInput = document.getElementById('firebase-master-password');
+    if (masterPasswordInput) {
+        masterPasswordInput.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const password = (e.target as HTMLInputElement).value;
+            setState({ settings: { ...state.settings, firebaseMasterPassword: password } });
+        });
+        masterPasswordInput.addEventListener('click', (e) => e.stopPropagation());
+        masterPasswordInput.addEventListener('focus', (e) => e.stopPropagation());
+    }
+    
     // Settings Page Controls - FIX: Stop propagation to prevent accordion from closing
     document.querySelectorAll('[data-setting-key]').forEach(el => {
         el.addEventListener('change', (e) => {
@@ -2483,6 +2576,15 @@ function attachEventListeners() {
         input.addEventListener('focus', (e) => e.stopPropagation());
     });
 
+    // Firebase master password input
+    document.getElementById('firebase-master-password')?.addEventListener('input', (e) => {
+        e.stopPropagation();
+        const value = (e.target as HTMLInputElement).value;
+        setState({ settings: { ...state.settings, firebaseMasterPassword: value } });
+    });
+    document.getElementById('firebase-master-password')?.addEventListener('click', (e) => e.stopPropagation());
+    document.getElementById('firebase-master-password')?.addEventListener('focus', (e) => e.stopPropagation());
+
     // Firebase enabled/auto-sync checkboxes
     document.getElementById('firebase_enabled')?.addEventListener('change', (e) => {
         e.stopPropagation();
@@ -2592,6 +2694,17 @@ function attachEventListeners() {
         e.stopPropagation();
         const btn = e.target as HTMLButtonElement;
         const originalText = btn.innerHTML;
+        
+        // 🔒 Password check before fetching
+        const savedPassword = state.settings?.firebaseMasterPassword || '';
+        const correctPassword = '1259';
+        if (savedPassword !== correctPassword) {
+            const enteredPassword = prompt('🔐 Firebase verilerini almak için ana şifreyi girin:');
+            if (enteredPassword !== correctPassword) {
+                showToast('❌ Yanlış şifre! Veriler alınamadı.', 'error');
+                return;
+            }
+        }
         
         try {
             btn.disabled = true;
@@ -2941,28 +3054,8 @@ function attachEventListeners() {
         setState(newState);
     };
 
-    const closeModal = (modalType: 'vehicle' | 'rental' | 'check-in' | 'customer' | 'rental-edit' | 'reservation' | 'maintenance' | 'reservation-edit' | 'maintenance-edit') => {
-        const newState: Partial<typeof state> = { 
-            selectedVehicleForAction: null, 
-            editingVehicleIndex: null,
-            editingCustomerIndex: null,
-            editingRentalId: null,
-            editingReservationId: null,
-            editingMaintenanceId: null,
-        };
-        switch(modalType) {
-            case 'vehicle': newState.isVehicleModalOpen = false; break;
-            case 'rental': newState.isRentalModalOpen = false; break;
-            case 'check-in': newState.isCheckInModalOpen = false; break;
-            case 'customer': newState.isCustomerModalOpen = false; break;
-            case 'rental-edit': newState.isRentalEditModalOpen = false; break;
-            case 'reservation': newState.isReservationModalOpen = false; break;
-            case 'maintenance': newState.isMaintenanceModalOpen = false; break;
-            case 'maintenance-edit': newState.isMaintenanceEditModalOpen = false; break;
-            case 'reservation-edit': newState.isReservationEditModalOpen = false; break;
-        }
-        setState(newState);
-    };
+    // ⚠️ LOCAL closeModal ve openModal SİLİNDİ - GLOBAL window fonksiyonları kullanılıyor!
+    // Artık window.closeModal() ve window.openModal() kullanılacak
 
     // Open vehicle modal
     document.getElementById('add-vehicle-btn')?.addEventListener('click', () => openModal('vehicle'));
@@ -4635,8 +4728,24 @@ function loadDataFromLocalStorage() {
             if (appData.readNotifications) state.readNotifications = appData.readNotifications;
             // Ayarları birleştirerek yükle, böylece yeni eklenen ayarlar kaybolmaz
             if (appData.settings) {
-                state.settings = { ...state.settings, ...appData.settings };
-                state.settings.companyInfo = { ...state.settings.companyInfo, ...appData.settings.companyInfo };
+                // Güvenli settings merge - nested objeleri koruyarak
+                state.settings = { 
+                    ...state.settings, 
+                    ...appData.settings,
+                    // Nested objeleri güvenli şekilde merge et
+                    companyInfo: { 
+                        ...state.settings.companyInfo, 
+                        ...(appData.settings.companyInfo || {}) 
+                    },
+                    pdfSettings: { 
+                        ...state.settings.pdfSettings, 
+                        ...(appData.settings.pdfSettings || {}) 
+                    },
+                    firebaseConfig: { 
+                        ...state.settings.firebaseConfig, 
+                        ...(appData.settings.firebaseConfig || {}) 
+                    }
+                };
             }
         } catch (e) {
             console.error("!!! HATA: localStorage'dan veri okunurken bir sorun oluştu. Kayıtlı veri bozuk olabilir.", e);
@@ -4653,6 +4762,14 @@ function loadDataFromLocalStorage() {
 // Otomatik Firebase senkronizasyonu
 async function autoSyncWithFirebase() {
     if (!state.settings?.firebaseEnabled || !state.settings?.firebaseAutoSync) {
+        return;
+    }
+    
+    // 🔒 Password check before auto-sync
+    const savedPassword = state.settings?.firebaseMasterPassword || '';
+    const correctPassword = '1259';
+    if (savedPassword !== correctPassword) {
+        console.warn('⚠️ Firebase ana şifresi ayarlanmamış veya yanlış. Otomatik sync iptal edildi.');
         return;
     }
     
@@ -4768,7 +4885,21 @@ function initializeApp() {
                 console.log('✅ Window load event - body hazır');
                 renderApp();
             });
-            return;
+        }
+        
+        // 🔥 Firebase'i otomatik başlat (eğer aktifse)
+        if (state.settings?.firebaseEnabled && state.settings?.firebaseConfig?.apiKey) {
+            setTimeout(async () => {
+                try {
+                    console.log('🔥 Firebase otomatik başlatılıyor...');
+                    if (typeof initializeFirebase === 'function') {
+                        await initializeFirebase(state.settings.firebaseConfig);
+                        console.log('✅ Firebase başarıyla başlatıldı!');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Firebase başlatma hatası:', error);
+                }
+            }, 1000); // 1 saniye bekle
         }
         
         renderApp();
@@ -4779,6 +4910,12 @@ function initializeApp() {
             setTimeout(async () => {
                 console.log('🔄 Otomatik Firebase sync başlatılıyor...');
                 try {
+                    // 🔒 Firebase config kontrolü
+                    if (!state.settings?.firebaseConfig || !state.settings?.firebaseConfig?.apiKey) {
+                        console.warn('⚠️ Firebase konfigürasyonu eksik, auto-sync atlandı');
+                        return;
+                    }
+                    
                     // Firebase'i başlat
                     if (typeof initializeFirebase === 'function') {
                         await initializeFirebase(state.settings?.firebaseConfig);
@@ -4871,5 +5008,97 @@ function initializeApp() {
         }
     } catch (error) {
         console.error('❌ Uygulama başlatma hatası:', error);
+    }
+}
+
+/**
+ * Upload file to Firebase Storage
+ * @param {File} file - Dosya objesi
+ * @param {string} category - Kategori (Sigortalar, Muayeneler, vb.)
+ * @param {Function} progressCallback - Progress callback (0-100)
+ * @returns {Promise<string>} - Download URL
+ */
+async function uploadFileToStorage(file: File, category: string = 'Diğer', progressCallback: Function = null): Promise<string> {
+    if (!firebaseStorage) {
+        throw new Error('Firebase Storage başlatılmamış!');
+    }
+
+    try {
+        // Dosya yolu oluştur: documents/kategori/timestamp_filename
+        const timestamp = Date.now();
+        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filePath = `documents/${category}/${timestamp}_${sanitizedFileName}`;
+        
+        // Storage referansı oluştur
+        const storageRef = firebaseStorage.ref();
+        const fileRef = storageRef.child(filePath);
+        
+        console.log(`📤 Firebase Storage'a yükleniyor: ${filePath}`);
+        
+        // Dosyayı yükle
+        const uploadTask = fileRef.put(file);
+        
+        // Progress tracking
+        return new Promise((resolve, reject) => {
+            uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                    // Progress callback
+                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                    if (progressCallback) {
+                        progressCallback(progress);
+                    }
+                    console.log(`⏳ Yükleme: ${progress}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)`);
+                },
+                (error) => {
+                    // Error callback
+                    console.error('❌ Firebase Storage yükleme hatası:', error);
+                    reject(error);
+                },
+                async () => {
+                    // Success callback
+                    try {
+                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                        console.log(`✅ Dosya yüklendi: ${downloadURL}`);
+                        resolve(downloadURL);
+                    } catch (error) {
+                        console.error('❌ Download URL alınamadı:', error);
+                        reject(error);
+                    }
+                }
+            );
+        });
+    } catch (error) {
+        console.error('❌ uploadFileToStorage hatası:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete file from Firebase Storage
+ * @param {string} fileUrl - Firebase Storage download URL
+ */
+async function deleteFileFromStorage(fileUrl: string): Promise<boolean> {
+    if (!firebaseStorage) {
+        throw new Error('Firebase Storage başlatılmamış!');
+    }
+
+    try {
+        // URL'den storage referansı oluştur
+        const storageRef = firebaseStorage.refFromURL(fileUrl);
+        
+        console.log(`🗑️ Firebase Storage'dan siliniyor: ${storageRef.fullPath}`);
+        
+        await storageRef.delete();
+        console.log('✅ Dosya Firebase Storage\'dan silindi');
+        return true;
+    } catch (error) {
+        console.error('❌ Firebase Storage silme hatası:', error);
+        // Dosya bulunamadıysa hata verme (zaten silinmiş olabilir)
+        if (error.code === 'storage/object-not-found') {
+            console.warn('⚠️ Dosya zaten silinmiş');
+            return true;
+        }
+        throw error;
     }
 }

@@ -64,10 +64,11 @@
     <!-- Firebase SDK (v9 compat mode) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
     
-    <!-- Firebase Configuration & Functions -->
-    <script src="firebase-config.js"></script>
+    <!-- Firebase Configuration (must load BEFORE main app) -->
+    <script src="/firebase-config.js"></script>
     
     <!-- ELECTRON TEST SCRIPT -->
     <script>
@@ -96,7 +97,7 @@
         });
     </script>
     
-    <!-- Main App - Vite will inject the correct script automatically -->  
+    <!-- Main App - MODULE (Vite handles this) -->  
     <script type="module" src="/src/index.js"></script>
     
     <!-- Service Worker Registration - COMPLETELY DISABLED FOR DEVELOPMENT -->

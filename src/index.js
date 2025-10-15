@@ -11,188 +11,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-console.log('🚀 index.tsx başladı yüklenmeye...');
+console.log('🚀 index.js yükleniyor...');
+
 /**
- * Firebase Configuration and Initialization
- * This file handles Firebase setup and provides sync functions
+ * Firebase functions are loaded from firebase-config.js (included in index.html)
+ * Available globals: initializeFirebase, sendDataToFirebase, loadDataFromFirebase, 
+ * uploadDocumentToStorage, deleteDocumentFromStorage, getFileMetadata
  */
-// Firebase will be imported from CDN in index.html
-let firebaseApp = null;
-let firebaseDatabase = null;
-let isFirebaseInitialized = false;
-// Default Firebase configuration
-const defaultFirebaseConfig = {
-    apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
-    authDomain: "rehber-filo.firebaseapp.com",
-    databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "rehber-filo",
-    storageBucket: "rehber-filo.firebasestorage.app",
-    messagingSenderId: "1022169726073",
-    appId: "1:1022169726073:web:584648469dd7854248a8a8"
-};
-/**
- * Initialize Firebase with user configuration
- */
-function initializeFirebase(config = null) {
-    console.log('🔥 initializeFirebase() çağrıldı, config:', config);
-    try {
-        // Use provided config or default config
-        const finalConfig = config || defaultFirebaseConfig;
-        if (!finalConfig || !finalConfig.apiKey || !finalConfig.databaseURL) {
-            throw new Error('Firebase konfigürasyonu eksik!');
-        }
-        // Initialize Firebase
-        if (typeof firebase !== 'undefined') {
-            firebaseApp = firebase.initializeApp(finalConfig);
-            firebaseDatabase = firebase.database();
-            isFirebaseInitialized = true;
-            console.log('✅ Firebase başarıyla başlatıldı!');
-            return true;
-        }
-        else {
-            throw new Error('Firebase SDK yüklenmedi!');
-        }
-    }
-    catch (error) {
-        console.error('❌ Firebase başlatma hatası:', error);
-        isFirebaseInitialized = false;
-        return false;
-    }
-}
-/**
- * Test Firebase connection
- */
-function testFirebaseConnection() {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!isFirebaseInitialized || !firebaseDatabase) {
-            throw new Error('Firebase başlatılmamış!');
-        }
-        try {
-            // Try to read from database
-            const testRef = firebaseDatabase.ref('.info/connected');
-            const snapshot = yield testRef.once('value');
-            return snapshot.val() === true;
-        }
-        catch (error) {
-            console.error('Firebase bağlantı testi başarısız:', error);
-            return false;
-        }
-    });
-}
-/**
- * Send all data to Firebase
- */
-function sendDataToFirebase(data) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!isFirebaseInitialized || !firebaseDatabase) {
-            throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
-        }
-        try {
-            const updates = {};
-            // Prepare data for Firebase
-            updates['/vehicles'] = data.vehiclesData || [];
-            updates['/customers'] = data.customersData || [];
-            updates['/rentals'] = data.rentalsData || [];
-            updates['/reservations'] = data.reservationsData || [];
-            updates['/maintenance'] = data.maintenanceData || [];
-            updates['/activities'] = data.activitiesData || [];
-            updates['/settings'] = data.settings || {};
-            updates['/lastUpdate'] = new Date().toISOString();
-            // Send to Firebase
-            yield firebaseDatabase.ref().update(updates);
-            console.log('✅ Veriler Firebase\'e gönderildi!');
-            return true;
-        }
-        catch (error) {
-            console.error('❌ Firebase\'e veri gönderme hatası:', error);
-            throw error;
-        }
-    });
-}
-/**
- * Fetch all data from Firebase
- */
-function fetchDataFromFirebase() {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!isFirebaseInitialized || !firebaseDatabase) {
-            throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
-        }
-        try {
-            const snapshot = yield firebaseDatabase.ref().once('value');
-            const data = snapshot.val();
-            if (!data) {
-                throw new Error('Firebase\'de veri bulunamadı!');
-            }
-            const result = {
-                vehiclesData: data.vehicles || [],
-                customersData: data.customers || [],
-                rentalsData: data.rentals || [],
-                reservationsData: data.reservations || [],
-                maintenanceData: data.maintenance || [],
-                activitiesData: data.activities || [],
-                settings: data.settings || {},
-                lastUpdate: data.lastUpdate || null
-            };
-            console.log('✅ Veriler Firebase\'den alındı!');
-            return result;
-        }
-        catch (error) {
-            console.error('❌ Firebase\'den veri çekme hatası:', error);
-            throw error;
-        }
-    });
-}
-/**
- * Setup real-time listener for data changes
- */
-function setupFirebaseListener(callback) {
-    if (!isFirebaseInitialized || !firebaseDatabase) {
-        console.warn('Firebase başlatılmamış, listener kurulamadı!');
-        return null;
-    }
-    try {
-        const ref = firebaseDatabase.ref();
-        ref.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && callback) {
-                callback(data);
-            }
-        });
-        console.log('✅ Firebase realtime listener kuruldu!');
-        return ref;
-    }
-    catch (error) {
-        console.error('❌ Firebase listener kurulumu hatası:', error);
-        return null;
-    }
-}
-/**
- * Load data from Firebase (alias for fetchDataFromFirebase)
- */
-function loadDataFromFirebase() {
-    return __awaiter(this, void 0, void 0, function* () {
-        return yield fetchDataFromFirebase();
-    });
-}
-/**
- * Remove Firebase listener
- */
-function removeFirebaseListener(ref) {
-    if (ref) {
-        ref.off();
-        console.log('Firebase listener kaldırıldı!');
-    }
-}
-// Firebase function declarations (defined in firebase-config.js)
-// declare function initializeFirebase(config: any): boolean;
-// declare function testFirebaseConnection(): Promise<boolean>;
-// declare function sendDataToFirebase(data: any): Promise<void>;
-// declare function loadDataFromFirebase(): Promise<any>;
+
+// 🔒 Render guard - prevent concurrent renders
+let isRendering = false;
+
 // Simple pseudo-ReactDOM render function
 function render(element, container) {
     if (container) {
         container.innerHTML = element;
-        // Add event listeners after rendering
+        // ⚡ Her render'da event listener'ları yeniden bağla (DOM yenileniyor)
         attachEventListeners();
     }
 }
@@ -215,6 +49,7 @@ let state = {
     selectedDocument: null, // Önizleme/düzenleme için seçilen dosya
     documentSelectorCallback: null, // Dosya seçildiğinde çağrılacak callback
     documentSelectorCategory: null, // Seçici modalda gösterilecek kategori filtresi
+    selectedDocumentsForForm: {}, // Form input'larına seçilen dosyalar: { inputId: docId }
     editingVehicleIndex: null,
     editingReservationId: null,
     editingMaintenanceId: null,
@@ -274,6 +109,11 @@ let state = {
 };
 // State update function
 function setState(newState) {
+    // 🔍 DEBUG: Kim çağırdı?
+    const stack = new Error().stack;
+    const caller = stack?.split('\n')[2]?.trim() || 'unknown';
+    console.log('🔧 setState() çağrıldı | Caller:', caller, '| State keys:', Object.keys(newState));
+    
     state = Object.assign(Object.assign({}, state), newState);
     saveDataToLocalStorage(); // ÖNCE veriyi kaydet. Bu, eklenti çakışmalarını önler.
     renderApp();
@@ -769,14 +609,14 @@ const CustomersPage = () => {
                         <div class="card-documents">
                             <div class="document-item">
                                 <div class="document-info"><i class="fa-solid fa-id-card"></i><span>Kimlik</span></div>
-                                ${customer.idFile ?
-            `<a href="${customer.idFileUrl || '#'}" target="_blank" class="btn-view" title="${customer.idFile}"><i class="fa-solid fa-eye"></i> Görüntüle</a>` :
+                                ${customer.idFile && customer.idFileUrl ?
+            `<a href="${customer.idFileUrl}" target="_blank" class="btn-view" title="${customer.idFile}"><i class="fa-solid fa-eye"></i> Görüntüle</a>` :
             `<button class="btn-upload btn-edit-customer"><i class="fa-solid fa-upload"></i> Yükle</button>`}
                             </div>
                             <div class="document-item">
                                 <div class="document-info"><i class="fa-solid fa-id-card-clip"></i><span>Ehliyet</span></div>
-                                ${customer.licenseFile ?
-            `<a href="${customer.licenseFileUrl || '#'}" target="_blank" class="btn-view" title="${customer.licenseFile}"><i class="fa-solid fa-eye"></i> Görüntüle</a>` :
+                                ${customer.licenseFile && customer.licenseFileUrl ?
+            `<a href="${customer.licenseFileUrl}" target="_blank" class="btn-view" title="${customer.licenseFile}"><i class="fa-solid fa-eye"></i> Görüntüle</a>` :
             `<button class="btn-upload btn-edit-customer"><i class="fa-solid fa-upload"></i> Yükle</button>`}
                             </div>
                         </div>
@@ -1133,7 +973,28 @@ const SettingsPage = () => {
                   </div>
                   ${createCheckbox('firebase_enabled', 'Firebase Senkronizasyonu Aktif', ((_q = state.settings) === null || _q === void 0 ? void 0 : _q.firebaseEnabled) || false)}
                   ${createCheckbox('firebase_auto_sync', 'Otomatik Senkronizasyon (Uygulama Açılışında)', ((_r = state.settings) === null || _r === void 0 ? void 0 : _r.firebaseAutoSync) || false)}
+                  
+                  <div class="form-group" style="margin-top: 16px; padding: 12px; background: #fef3c7; border: 2px solid #fbbf24; border-radius: 8px;">
+                      <label style="display: flex; align-items: center; gap: 8px; color: #92400e; font-weight: 600;">
+                          <i class="fa-solid fa-lock"></i> Ana Şifre (Güvenlik)
+                      </label>
+                      <input 
+                          type="password" 
+                          class="setting-input" 
+                          id="firebase-master-password" 
+                          value="${((_s2 = state.settings) === null || _s2 === void 0 ? void 0 : _s2.firebaseMasterPassword) || ''}"
+                          placeholder="Şifrenizi buraya girin"
+                          style="margin-top: 8px;"
+                      >
+                      <small style="display: block; margin-top: 8px; color: #92400e; font-size: 12px;">
+                          <i class="fa-solid fa-info-circle"></i> Bu şifre olmadan Firebase'den veri çekilemez. Yabancı kişilerin verilerinize erişmesini engeller.
+                      </small>
+                  </div>
+                  
                   <div class="backup-restore-buttons" style="margin-top: 16px;">
+                      <button class="btn btn-secondary" id="btn-load-default-firebase">
+                          <i class="fa-solid fa-rotate"></i> Varsayılan Ayarları Yükle
+                      </button>
                       <button class="btn btn-primary" id="btn-test-firebase" ${!((_t = (_s = state.settings) === null || _s === void 0 ? void 0 : _s.firebaseConfig) === null || _t === void 0 ? void 0 : _t.apiKey) || !((_v = (_u = state.settings) === null || _u === void 0 ? void 0 : _u.firebaseConfig) === null || _v === void 0 ? void 0 : _v.databaseURL) ? 'disabled' : ''}>
                           <i class="fa-solid fa-plug"></i> Bağlantıyı Test Et
                       </button>
@@ -1428,7 +1289,7 @@ const DocumentsPage = () => {
         
         return `
             <div class="document-category">
-                <div class="document-category-header" onclick="toggleDocumentCategory('${category}')">
+                <div class="document-category-header" data-category="${category}">
                     <div class="document-category-title">
                         <i class="fa-solid fa-folder"></i>
                         <span>${category}</span>
@@ -1443,6 +1304,9 @@ const DocumentsPage = () => {
                         <div class="documents-grid">
                             ${docs.map(doc => `
                                 <div class="document-card" data-document-id="${doc.id}">
+                                    <div class="document-card-checkbox" style="display: none;">
+                                        <input type="checkbox" class="doc-select-checkbox" data-doc-id="${doc.id}">
+                                    </div>
                                     <div class="document-card-icon">
                                         <i class="${getFileIcon(doc.type)}"></i>
                                     </div>
@@ -1461,10 +1325,10 @@ const DocumentsPage = () => {
                                         ` : ''}
                                     </div>
                                     <div class="document-card-actions">
-                                        <button class="btn-icon" onclick="previewDocument(${doc.id})" title="Önizle">
+                                        <button class="btn-icon btn-preview-doc" data-doc-id="${doc.id}" title="Önizle">
                                             <i class="fa-solid fa-eye"></i>
                                         </button>
-                                        <button class="btn-icon btn-icon-danger" onclick="deleteDocument(${doc.id})" title="Sil">
+                                        <button class="btn-icon btn-icon-danger btn-delete-doc" data-doc-id="${doc.id}" title="Sil">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </div>
@@ -1483,9 +1347,19 @@ const DocumentsPage = () => {
                 <h1><i class="fa-solid fa-folder-open"></i> Dosyalarım</h1>
                 <p>${totalDocs} dosya • ${formatSize(totalSize)}</p>
             </div>
-            <button class="btn btn-primary" onclick="openDocumentUploadModal()">
-                <i class="fa-solid fa-plus"></i> Yeni Dosya Ekle
-            </button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                ${totalDocs > 0 ? `
+                    <button class="btn btn-danger" id="btn-bulk-delete-documents" style="display: none;">
+                        <i class="fa-solid fa-trash"></i> Seçilenleri Sil (<span id="selected-docs-count">0</span>)
+                    </button>
+                    <button class="btn btn-secondary" id="btn-toggle-select-mode">
+                        <i class="fa-solid fa-check-square"></i> Seçim Modu
+                    </button>
+                ` : ''}
+                <button class="btn btn-primary" id="btn-add-document-header">
+                    <i class="fa-solid fa-plus"></i> Yeni Dosya Ekle
+                </button>
+            </div>
         </div>
         
         <div class="documents-container">
@@ -1497,7 +1371,7 @@ const DocumentsPage = () => {
                 <i class="fa-solid fa-folder-open"></i>
                 <h3>Henüz dosya eklemediniz</h3>
                 <p>Faturalar, sigortalar, muayeneler ve diğer dökümanlarınızı buradan yönetebilirsiniz.</p>
-                <button class="btn btn-primary" onclick="openDocumentUploadModal()">
+                <button class="btn btn-primary" id="btn-add-document-empty">
                     <i class="fa-solid fa-plus"></i> İlk Dosyanızı Ekleyin
                 </button>
             </div>
@@ -1560,6 +1434,310 @@ const PlaceholderPage = (pageName, icon) => {
     </div>
     `;
 };
+
+/**
+ * ========================================
+ * DOSYA YÖNETİMİ MODAL'LARI
+ * ========================================
+ */
+
+// Dosya Yükleme Modal'ı
+const DocumentUploadModal = () => {
+    if (!state.isDocumentUploadModalOpen) return '';
+    
+    return `
+        <div class="modal-overlay" id="document-upload-modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-cloud-arrow-up"></i> Yeni Dosya Yükle</h2>
+                    <button class="close-modal-btn" id="btn-close-document-upload">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <form id="document-upload-form" class="modal-form">
+                    <div class="form-group">
+                        <label for="doc-category">Kategori <span class="required">*</span></label>
+                        <select id="doc-category" name="category" class="custom-select" required>
+                            <option value="">-- Kategori Seçin --</option>
+                            <option value="Faturalar">📄 Faturalar</option>
+                            <option value="Sigortalar">🛡️ Sigortalar</option>
+                            <option value="Muayeneler">🔧 Muayeneler</option>
+                            <option value="Ruhsatlar">📋 Ruhsatlar</option>
+                            <option value="Diger">📁 Diğer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Yükleme Tipi <span class="required">*</span></label>
+                        <div class="upload-type-selector">
+                            <button type="button" class="upload-type-btn active" id="btn-upload-single">
+                                <i class="fa-solid fa-file"></i> Tek Dosya
+                            </button>
+                            <button type="button" class="upload-type-btn" id="btn-upload-folder">
+                                <i class="fa-solid fa-folder"></i> Klasör
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="single-file-upload">
+                        <label for="doc-file">Dosya Seç <span class="required">*</span></label>
+                        <input 
+                            type="file" 
+                            id="doc-file" 
+                            name="file" 
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        >
+                        <small class="form-help">Maksimum 10MB - PDF, JPG, PNG, DOC</small>
+                    </div>
+                    
+                    <div class="form-group" id="folder-upload" style="display: none;">
+                        <label for="doc-folder">Klasör Seç <span class="required">*</span></label>
+                        <input 
+                            type="file" 
+                            id="doc-folder" 
+                            name="folder" 
+                            webkitdirectory
+                            directory
+                            multiple
+                        >
+                        <small class="form-help">Klasördeki tüm dosyalar yüklenecek (alt klasörler dahil)</small>
+                    </div>
+                    
+                    <div class="form-group" id="doc-file-preview" style="display: none;">
+                        <div class="file-preview-card">
+                            <i class="fa-solid fa-file" id="doc-file-icon"></i>
+                            <div class="file-preview-info">
+                                <p id="doc-file-name">-</p>
+                                <p id="doc-file-size">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="doc-tags">Etiketler (opsiyonel)</label>
+                        <input 
+                            type="text" 
+                            id="doc-tags" 
+                            name="tags" 
+                            placeholder="Virgülle ayırarak yazın: 2024, yıllık, vb."
+                        >
+                    </div>
+                    
+                    <!-- Yükleme Progress Bar -->
+                    <div class="upload-progress" id="upload-progress" style="display: none;">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="upload-progress-fill"></div>
+                        </div>
+                        <p id="upload-progress-text">Yükleniyor... 0%</p>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-document-upload">
+                            İptal
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btn-upload-document">
+                            <i class="fa-solid fa-upload"></i> Yükle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+};
+
+// Dosya Önizleme Modal'ı
+const DocumentPreviewModal = () => {
+    if (!state.isDocumentPreviewModalOpen || !state.selectedDocument) return '';
+    
+    const doc = documentsData.find(d => d.id === state.selectedDocument);
+    if (!doc) return '';
+    
+    const isPDF = doc.type === 'pdf';
+    const isImage = doc.type === 'image';
+    
+    return `
+        <div class="modal-overlay" id="document-preview-modal-overlay">
+            <div class="modal-content document-preview-modal">
+                <div class="modal-header">
+                    <h2><i class="${isPDF ? 'fa-solid fa-file-pdf' : 'fa-solid fa-file-image'}"></i> ${doc.name}</h2>
+                    <button class="close-modal-btn" id="btn-close-document-preview">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <div class="document-meta-info">
+                    ${doc.category} • ${formatSize(doc.size)} • ${formatDate(doc.uploadDate)}
+                </div>
+                
+                <div class="document-preview-body">
+                    ${isPDF ? `
+                        <iframe 
+                            src="${doc.storageType === 'firebase' ? doc.url : doc.fileData}" 
+                            class="document-iframe"
+                            frameborder="0"
+                        ></iframe>
+                    ` : isImage ? `
+                        <img 
+                            src="${doc.storageType === 'firebase' ? doc.url : doc.fileData}" 
+                            alt="${doc.name}"
+                            class="document-image"
+                        >
+                    ` : `
+                        <div class="document-no-preview">
+                            <i class="fa-solid fa-file"></i>
+                            <p>Bu dosya türü önizlenemiyor.</p>
+                            <button class="btn btn-primary btn-download-doc" data-doc-id="${doc.id}">
+                                <i class="fa-solid fa-download"></i> İndir
+                            </button>
+                        </div>
+                    `}
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-download-doc" data-doc-id="${doc.id}">
+                        <i class="fa-solid fa-download"></i> İndir
+                    </button>
+                    <button class="btn btn-danger btn-delete-doc" data-doc-id="${doc.id}">
+                        <i class="fa-solid fa-trash"></i> Sil
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+    
+    function formatDate(date) {
+        if (!date) return 'Bilinmiyor';
+        return new Date(date).toLocaleDateString('tr-TR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+};
+
+// Dosya Seçici Modal (Araç/Kiralama Formlarından Çağrılır)
+const DocumentSelectorModal = () => {
+    if (!state.isDocumentSelectorModalOpen) return '';
+    
+    // 🗂️ KLASÖR YAPISI - Kategorilere göre grupla
+    const categories = [
+        { name: 'Sigortalar', icon: 'fa-shield-halved', key: 'Sigortalar' },
+        { name: 'Muayeneler', icon: 'fa-clipboard-check', key: 'Muayeneler' },
+        { name: 'Ruhsatlar', icon: 'fa-id-card', key: 'Ruhsatlar' },
+        { name: 'Faturalar', icon: 'fa-file-invoice', key: 'Faturalar' },
+        { name: 'Diğer', icon: 'fa-folder', key: 'Diger' }
+    ];
+    
+    // Kategorilere göre dosyaları grupla
+    const groupedDocs = {};
+    categories.forEach(cat => {
+        groupedDocs[cat.key] = documentsData.filter(doc => doc.category === cat.key);
+    });
+    
+    const totalDocs = documentsData.length;
+    
+    // 📂 Açık/kapalı klasör durumlarını state'te sakla
+    if (!state.openFolders) {
+        state.openFolders = {};
+        categories.forEach(cat => {
+            state.openFolders[cat.key] = true; // Varsayılan: tümü açık
+        });
+    }
+    
+    return `
+        <div class="modal-overlay" id="document-selector-modal-overlay">
+            <div class="modal-content document-selector-modal">
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-folder-open"></i> Dosya Seç (${totalDocs} dosya)</h2>
+                    <button class="close-modal-btn" id="btn-close-document-selector">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-form">
+                    ${totalDocs === 0 ? `
+                        <div class="empty-state">
+                            <i class="fa-solid fa-folder-open"></i>
+                            <p>Henüz dosya bulunamadı.</p>
+                            <button class="btn btn-primary" id="btn-add-doc-from-selector">
+                                <i class="fa-solid fa-plus"></i> Yeni Dosya Ekle
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="document-selector-folders">
+                            ${categories.map(cat => {
+                                const docs = groupedDocs[cat.key] || [];
+                                if (docs.length === 0) return ''; // Boş klasörleri gösterme
+                                
+                                const isOpen = state.openFolders[cat.key];
+                                
+                                return `
+                                    <div class="doc-folder ${isOpen ? 'folder-open' : 'folder-closed'}">
+                                        <div class="doc-folder-header" data-folder="${cat.key}">
+                                            <i class="fa-solid ${isOpen ? 'fa-folder-open' : 'fa-folder'}"></i>
+                                            <span>${cat.name}</span>
+                                            <span class="doc-folder-count">(${docs.length})</span>
+                                            <i class="fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'} folder-toggle-icon"></i>
+                                        </div>
+                                        <div class="doc-folder-content" style="display: ${isOpen ? 'flex' : 'none'};">
+                                            ${docs.map(doc => `
+                                                <label class="document-selector-item">
+                                                    <input 
+                                                        type="radio" 
+                                                        name="selected-document" 
+                                                        value="${doc.id}"
+                                                    >
+                                                    <div class="document-selector-card">
+                                                        <i class="${doc.type === 'pdf' ? 'fa-solid fa-file-pdf' : 'fa-solid fa-file-image'}"></i>
+                                                        <div class="document-selector-info">
+                                                            <h4>${doc.name}</h4>
+                                                            <p>${formatSize(doc.size)}</p>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" id="btn-cancel-document-selector">
+                            <i class="fa-solid fa-xmark"></i> İptal
+                        </button>
+                        <button 
+                            class="btn btn-primary" 
+                            id="btn-upload-selected-document"
+                            ${totalDocs === 0 ? 'disabled' : ''}
+                        >
+                            <i class="fa-solid fa-upload"></i> Yükle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    function formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+};
+
 const VehicleModal = () => {
     const isEditing = state.editingVehicleIndex !== null;
     const vehicle = isEditing ? vehiclesData[state.editingVehicleIndex] : null;
@@ -1614,17 +1792,56 @@ const VehicleModal = () => {
                 </div>
                 <div class="file-upload-group">
                     <label>Belge Yükleme</label>
-                    <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-shield-halved"></i> Sigorta</span>
-                         <input type="file" id="insuranceFile" name="insuranceFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-shield-halved"></i> Sigorta</span>
+                              <input type="file" id="insuranceFile" name="insuranceFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="insuranceFile" data-category="Sigortalar">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['insuranceFile'] ? `
+                             <div class="selected-document-indicator" id="insuranceFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['insuranceFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="insuranceFile"></i>
+                             </div>
+                             <input type="hidden" name="insuranceFileDocId" value="${state.selectedDocumentsForForm['insuranceFile'].id}">
+                         ` : ''}
                     </div>
-                     <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-clipboard-check"></i> Muayene</span>
-                         <input type="file" id="inspectionFile" name="inspectionFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-clipboard-check"></i> Muayene</span>
+                              <input type="file" id="inspectionFile" name="inspectionFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="inspectionFile" data-category="Muayeneler">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['inspectionFile'] ? `
+                             <div class="selected-document-indicator" id="inspectionFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['inspectionFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="inspectionFile"></i>
+                             </div>
+                             <input type="hidden" name="inspectionFileDocId" value="${state.selectedDocumentsForForm['inspectionFile'].id}">
+                         ` : ''}
                     </div>
-                     <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-id-card"></i> Ruhsat</span>
-                         <input type="file" id="licenseFile" name="licenseFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-id-card"></i> Ruhsat</span>
+                              <input type="file" id="licenseFile" name="licenseFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="licenseFile" data-category="Ruhsatlar">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['licenseFile'] ? `
+                             <div class="selected-document-indicator" id="licenseFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['licenseFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="licenseFile"></i>
+                             </div>
+                             <input type="hidden" name="licenseFileDocId" value="${state.selectedDocumentsForForm['licenseFile'].id}">
+                         ` : ''}
                     </div>
                 </div>
             </form>
@@ -1683,13 +1900,39 @@ const CustomerModal = () => {
                 </div>
                 <div class="file-upload-group">
                     <label>Belge Yükleme</label>
-                    <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-id-card"></i> Kimlik</span>
-                         <input type="file" id="idFile" name="idFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-id-card"></i> Kimlik</span>
+                              <input type="file" id="idFile" name="idFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="idFile" data-category="Diger">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['idFile'] ? `
+                             <div class="selected-document-indicator" id="idFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['idFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="idFile"></i>
+                             </div>
+                             <input type="hidden" name="idFileDocId" value="${state.selectedDocumentsForForm['idFile'].id}">
+                         ` : ''}
                     </div>
-                     <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-id-card-clip"></i> Ehliyet</span>
-                         <input type="file" id="licenseFile" name="licenseFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-id-card-clip"></i> Ehliyet</span>
+                              <input type="file" id="driverLicenseFile" name="driverLicenseFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="driverLicenseFile" data-category="Diger">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['driverLicenseFile'] ? `
+                             <div class="selected-document-indicator" id="driverLicenseFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['driverLicenseFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="driverLicenseFile"></i>
+                             </div>
+                             <input type="hidden" name="driverLicenseFileDocId" value="${state.selectedDocumentsForForm['driverLicenseFile'].id}">
+                         ` : ''}
                     </div>
                 </div>
             </form>
@@ -1949,13 +2192,39 @@ const RentalEditModal = () => {
 
                 <div class="file-upload-group">
                     <label>Belge Yükleme</label>
-                    <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-file-contract"></i> Sözleşme</span>
-                         <input type="file" name="contractFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-file-contract"></i> Sözleşme</span>
+                              <input type="file" id="contractFile" name="contractFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="contractFile" data-category="Faturalar">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['contractFile'] ? `
+                             <div class="selected-document-indicator" id="contractFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['contractFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="contractFile"></i>
+                             </div>
+                             <input type="hidden" name="contractFileDocId" value="${state.selectedDocumentsForForm['contractFile'].id}">
+                         ` : ''}
                     </div>
-                     <div class="file-input-wrapper">
-                         <span><i class="fa-solid fa-file-invoice-dollar"></i> Fatura</span>
-                         <input type="file" name="invoiceFile" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="file-input-with-selector">
+                         <div class="file-input-wrapper">
+                              <span><i class="fa-solid fa-file-invoice-dollar"></i> Fatura</span>
+                              <input type="file" id="invoiceFile" name="invoiceFile" accept=".pdf,.jpg,.jpeg,.png">
+                         </div>
+                         <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="invoiceFile" data-category="Faturalar">
+                              <i class="fa-solid fa-folder-open"></i> Dosyalarımdan Seç
+                         </button>
+                         ${state.selectedDocumentsForForm && state.selectedDocumentsForForm['invoiceFile'] ? `
+                             <div class="selected-document-indicator" id="invoiceFile-indicator">
+                                 <i class="fa-solid fa-check-circle"></i>
+                                 <span>${state.selectedDocumentsForForm['invoiceFile'].name}</span>
+                                 <i class="fa-solid fa-xmark remove-selection" data-target="invoiceFile"></i>
+                             </div>
+                             <input type="hidden" name="invoiceFileDocId" value="${state.selectedDocumentsForForm['invoiceFile'].id}">
+                         ` : ''}
                     </div>
                 </div>
             </form>
@@ -2178,11 +2447,25 @@ const App = () => {
     ${state.isMaintenanceEditModalOpen ? MaintenanceEditModal() : ''}
     ${state.isRentalEditModalOpen ? RentalEditModal() : ''}
     ${state.isReservationEditModalOpen ? ReservationEditModal() : ''}
+    ${DocumentUploadModal()}
+    ${DocumentPreviewModal()}
+    ${DocumentSelectorModal()}
     </div>
   `;
 };
 function renderApp() {
-    console.log('🎨 renderApp() fonksiyonu çağrıldı');
+    // 🔒 Prevent concurrent renders
+    if (isRendering) {
+        console.log('⚠️ renderApp() zaten çalışıyor, atlandı');
+        return;
+    }
+    
+    isRendering = true;
+    
+    // 🔍 CALLER DEBUG
+    const stack = new Error().stack;
+    const caller = stack?.split('\n')[2]?.trim() || 'unknown';
+    console.log('🎨 renderApp() çağrıldı | Caller:', caller);
     try {
         // KRITIK FIX: activitiesData'yı temizle
         if (activitiesData && Array.isArray(activitiesData)) {
@@ -2225,6 +2508,10 @@ function renderApp() {
         if (root) {
             root.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h1>Uygulama Çizilirken Kritik Bir Hata Oluştu</h1><p>Lütfen konsolu (F12) kontrol edin.</p><pre>${error.message}</pre></div>`;
         }
+    }
+    finally {
+        // 🔓 Release render lock
+        isRendering = false;
     }
 }
 function attachEventListeners() {
@@ -2407,6 +2694,7 @@ function attachEventListeners() {
                         reservationsData,
                         maintenanceData,
                         activitiesData,
+                        documentsData, // ✅ Dosyaları da gönder
                         settings: state.settings,
                     };
                     // Firebase'e gönder
@@ -2478,6 +2766,18 @@ function attachEventListeners() {
             input.addEventListener('click', (e) => e.stopPropagation());
             input.addEventListener('focus', (e) => e.stopPropagation());
         });
+        // Firebase Master Password
+        const masterPasswordInput = document.getElementById('firebase-master-password');
+        if (masterPasswordInput) {
+            masterPasswordInput.addEventListener('input', (e) => {
+                e.stopPropagation();
+                const password = e.target.value;
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseMasterPassword: password }) });
+            });
+            masterPasswordInput.addEventListener('click', (e) => e.stopPropagation());
+            masterPasswordInput.addEventListener('focus', (e) => e.stopPropagation());
+        }
+        
         // Firebase enabled/auto-sync checkboxes
         (_m = document.getElementById('firebase_enabled')) === null || _m === void 0 ? void 0 : _m.addEventListener('change', (e) => {
             e.stopPropagation();
@@ -2489,8 +2789,34 @@ function attachEventListeners() {
             const isChecked = e.target.checked;
             setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseAutoSync: isChecked }) });
         });
+        // Load default Firebase config
+        (_p = document.getElementById('btn-load-default-firebase')) === null || _p === void 0 ? void 0 : _p.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            // Default Firebase config from firebase-config.js
+            const defaultConfig = {
+                apiKey: "AIzaSyDKeJDoNyGiPfdT6aOleZvzN85I8C3bVu8",
+                authDomain: "rehber-filo.firebaseapp.com",
+                databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "rehber-filo",
+                storageBucket: "rehber-filo.firebasestorage.app",
+                messagingSenderId: "1022169726073",
+                appId: "1:1022169726073:web:584648469dd7854248a8a8"
+            };
+            
+            // Update state with default config
+            setState({
+                settings: Object.assign(Object.assign({}, state.settings), {
+                    firebaseConfig: defaultConfig,
+                    firebaseEnabled: true
+                })
+            });
+            
+            showToast('Varsayılan Firebase ayarları yüklendi! ✅', 'success');
+            logActivity('fa-solid fa-cloud', 'Firebase varsayılan ayarları yüklendi');
+        });
         // Test Firebase connection
-        (_p = document.getElementById('btn-test-firebase')) === null || _p === void 0 ? void 0 : _p.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+        (_q = document.getElementById('btn-test-firebase')) === null || _q === void 0 ? void 0 : _q.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             e.stopPropagation();
             const btn = e.target;
@@ -2530,7 +2856,7 @@ function attachEventListeners() {
             }
         }));
         // Send data to Firebase
-        (_q = document.getElementById('btn-send-to-firebase')) === null || _q === void 0 ? void 0 : _q.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+        (_r = document.getElementById('btn-send-to-firebase')) === null || _r === void 0 ? void 0 : _r.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
             var _a;
             e.stopPropagation();
             const btn = e.target;
@@ -2546,6 +2872,7 @@ function attachEventListeners() {
                     reservationsData,
                     maintenanceData,
                     activitiesData,
+                    documentsData, // ✅ Dosyaları da ekle
                     settings: state.settings,
                 };
                 // Check if Firebase functions exist
@@ -2559,7 +2886,8 @@ function attachEventListeners() {
                     const vehicleCount = (vehiclesData === null || vehiclesData === void 0 ? void 0 : vehiclesData.length) || 0;
                     const customerCount = (customersData === null || customersData === void 0 ? void 0 : customersData.length) || 0;
                     const rentalCount = (rentalsData === null || rentalsData === void 0 ? void 0 : rentalsData.length) || 0;
-                    showToast(`Veriler başarıyla gönderildi! 📤\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama`, 'success');
+                    const docCount = (documentsData === null || documentsData === void 0 ? void 0 : documentsData.length) || 0;
+                    showToast(`Veriler başarıyla gönderildi! 📤\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama, ${docCount} dosya`, 'success');
                 }
                 else {
                     throw new Error('Firebase fonksiyonları yüklenmedi');
@@ -2575,11 +2903,28 @@ function attachEventListeners() {
             }
         }));
         // Fetch data from Firebase
-        (_r = document.getElementById('btn-fetch-from-firebase')) === null || _r === void 0 ? void 0 : _r.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
-            var _a;
+        (_s = document.getElementById('btn-fetch-from-firebase')) === null || _s === void 0 ? void 0 : _s.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+            var _a, _a2;
             e.stopPropagation();
             const btn = e.target;
             const originalText = btn.innerHTML;
+            
+            // 🔐 ŞİFRE KONTROLÜ
+            const savedPassword = ((_a2 = state.settings) === null || _a2 === void 0 ? void 0 : _a2.firebaseMasterPassword) || '';
+            const correctPassword = '1259';
+            
+            if (savedPassword !== correctPassword) {
+                const enteredPassword = prompt('🔐 Firebase verilerini almak için ana şifreyi girin:');
+                if (!enteredPassword) {
+                    showToast('İşlem iptal edildi', 'info');
+                    return;
+                }
+                if (enteredPassword !== correctPassword) {
+                    showToast('❌ Yanlış şifre! Veriler alınamadı.', 'error');
+                    return;
+                }
+            }
+            
             try {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Alınıyor...';
@@ -2604,6 +2949,8 @@ function attachEventListeners() {
                         maintenanceData = data.maintenanceData;
                     if (data.activitiesData)
                         activitiesData = data.activitiesData;
+                    if (data.documentsData)
+                        documentsData = data.documentsData; // ✅ Dosyaları da yükle
                     if (data.settings) {
                         state.settings = Object.assign(Object.assign({}, state.settings), data.settings);
                     }
@@ -2612,7 +2959,8 @@ function attachEventListeners() {
                     const vehicleCount = (vehiclesData === null || vehiclesData === void 0 ? void 0 : vehiclesData.length) || 0;
                     const customerCount = (customersData === null || customersData === void 0 ? void 0 : customersData.length) || 0;
                     const rentalCount = (rentalsData === null || rentalsData === void 0 ? void 0 : rentalsData.length) || 0;
-                    showToast(`Veriler başarıyla alındı! 📥\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama`, 'success');
+                    const docCount = (documentsData === null || documentsData === void 0 ? void 0 : documentsData.length) || 0;
+                    showToast(`Veriler başarıyla alındı! 📥\n${vehicleCount} araç, ${customerCount} müşteri, ${rentalCount} kiralama, ${docCount} dosya`, 'success');
                     // Re-render the app
                     renderApp();
                 }
@@ -2910,46 +3258,7 @@ function attachEventListeners() {
             }
             setState(newState);
         };
-        const closeModal = (modalType) => {
-            const newState = {
-                selectedVehicleForAction: null,
-                editingVehicleIndex: null,
-                editingCustomerIndex: null,
-                editingRentalId: null,
-                editingReservationId: null,
-                editingMaintenanceId: null,
-            };
-            switch (modalType) {
-                case 'vehicle':
-                    newState.isVehicleModalOpen = false;
-                    break;
-                case 'rental':
-                    newState.isRentalModalOpen = false;
-                    break;
-                case 'check-in':
-                    newState.isCheckInModalOpen = false;
-                    break;
-                case 'customer':
-                    newState.isCustomerModalOpen = false;
-                    break;
-                case 'rental-edit':
-                    newState.isRentalEditModalOpen = false;
-                    break;
-                case 'reservation':
-                    newState.isReservationModalOpen = false;
-                    break;
-                case 'maintenance':
-                    newState.isMaintenanceModalOpen = false;
-                    break;
-                case 'maintenance-edit':
-                    newState.isMaintenanceEditModalOpen = false;
-                    break;
-                case 'reservation-edit':
-                    newState.isReservationEditModalOpen = false;
-                    break;
-            }
-            setState(newState);
-        };
+        // ❌ LOCAL closeModal REMOVED - GLOBAL closeModal() kullanılacak
         // Open vehicle modal
         (_v = document.getElementById('add-vehicle-btn')) === null || _v === void 0 ? void 0 : _v.addEventListener('click', () => openModal('vehicle'));
         (_w = document.getElementById('add-customer-btn')) === null || _w === void 0 ? void 0 : _w.addEventListener('click', () => openModal('customer'));
@@ -3045,8 +3354,14 @@ function attachEventListeners() {
                     else if (action === 'edit-rental' || action === 'upload-doc') {
                         openModal('rental-edit', rentalId);
                     }
-                    else if (action === 'view-doc' && docUrl) {
-                        window.open(docUrl, '_blank');
+                    else if (action === 'view-doc') {
+                        console.log('📄 view-doc tıklandı, docUrl:', docUrl);
+                        if (docUrl && docUrl !== 'null' && docUrl !== 'undefined') {
+                            window.open(docUrl, '_blank');
+                        } else {
+                            showToast('Dosya bulunamadı', 'error');
+                            console.error('❌ Dosya URL boş veya geçersiz:', docUrl);
+                        }
                     }
                 });
             }
@@ -3238,6 +3553,455 @@ function attachEventListeners() {
         };
         maintenanceKmInput === null || maintenanceKmInput === void 0 ? void 0 : maintenanceKmInput.addEventListener('input', updateNextMaintenance);
         maintenanceDateInput === null || maintenanceDateInput === void 0 ? void 0 : maintenanceDateInput.addEventListener('input', updateNextMaintenance);
+        
+        // ========== DOSYA YÖNETİMİ EVENT LISTENERS ==========
+        
+        // Seçim Modu Toggle
+        const btnToggleSelectMode = document.getElementById('btn-toggle-select-mode');
+        if (btnToggleSelectMode) {
+            btnToggleSelectMode.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const checkboxes = document.querySelectorAll('.document-card-checkbox');
+                const isSelectMode = checkboxes[0]?.style.display === 'none';
+                
+                // Checkbox'ları göster/gizle
+                checkboxes.forEach(cb => {
+                    cb.style.display = isSelectMode ? 'flex' : 'none';
+                });
+                
+                // Buton metnini değiştir
+                const icon = btnToggleSelectMode.querySelector('i');
+                if (isSelectMode) {
+                    btnToggleSelectMode.innerHTML = '<i class="fa-solid fa-xmark"></i> Seçimi İptal Et';
+                    btnToggleSelectMode.classList.remove('btn-secondary');
+                    btnToggleSelectMode.classList.add('btn-danger');
+                } else {
+                    btnToggleSelectMode.innerHTML = '<i class="fa-solid fa-check-square"></i> Seçim Modu';
+                    btnToggleSelectMode.classList.remove('btn-danger');
+                    btnToggleSelectMode.classList.add('btn-secondary');
+                    
+                    // Tüm seçimleri temizle
+                    document.querySelectorAll('.doc-select-checkbox').forEach(cb => cb.checked = false);
+                    document.getElementById('btn-bulk-delete-documents').style.display = 'none';
+                    document.getElementById('selected-docs-count').textContent = '0';
+                }
+            });
+        }
+        
+        // Checkbox değişikliklerini dinle
+        document.querySelectorAll('.doc-select-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const selectedCount = document.querySelectorAll('.doc-select-checkbox:checked').length;
+                const bulkDeleteBtn = document.getElementById('btn-bulk-delete-documents');
+                const countSpan = document.getElementById('selected-docs-count');
+                
+                if (selectedCount > 0) {
+                    bulkDeleteBtn.style.display = 'flex';
+                    countSpan.textContent = selectedCount;
+                } else {
+                    bulkDeleteBtn.style.display = 'none';
+                    countSpan.textContent = '0';
+                }
+            });
+        });
+        
+        // Toplu Silme
+        const btnBulkDelete = document.getElementById('btn-bulk-delete-documents');
+        if (btnBulkDelete) {
+            btnBulkDelete.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const selectedCheckboxes = document.querySelectorAll('.doc-select-checkbox:checked');
+                const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.docId));
+                
+                if (selectedIds.length === 0) {
+                    showToast('Lütfen silinecek dosyaları seçin', 'error');
+                    return;
+                }
+                
+                const confirmDelete = confirm(`${selectedIds.length} dosyayı silmek istediğinizden emin misiniz?`);
+                if (!confirmDelete) return;
+                
+                // Seçili dosyaları sil (Firebase Storage dahil)
+                for (const docId of selectedIds) {
+                    const index = documentsData.findIndex(d => d.id === docId);
+                    if (index > -1) {
+                        const doc = documentsData[index];
+                        
+                        // Firebase Storage'dan sil
+                        if (doc.storageType === 'firebaseStorage' && doc.url) {
+                            try {
+                                if (typeof deleteFileFromStorage === 'function') {
+                                    await deleteFileFromStorage(doc.url);
+                                }
+                            } catch (err) {
+                                console.error('Firebase Storage silme hatası:', err);
+                            }
+                        }
+                        
+                        documentsData.splice(index, 1);
+                    }
+                }
+                
+                saveDataToLocalStorage();
+                showToast(`${selectedIds.length} dosya başarıyla silindi!`, 'success');
+                logActivity('fa-solid fa-trash', `${selectedIds.length} dosya toplu silindi`);
+                renderApp();
+            });
+        }
+        
+        // "Yeni Dosya Ekle" butonları
+        const btnAddDocHeader = document.getElementById('btn-add-document-header');
+        if (btnAddDocHeader) {
+            btnAddDocHeader.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openDocumentUploadModal();
+            });
+        }
+        
+        const btnAddDocEmpty = document.getElementById('btn-add-document-empty');
+        if (btnAddDocEmpty) {
+            btnAddDocEmpty.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openDocumentUploadModal();
+            });
+        }
+        
+        // Document Upload Modal
+        const documentUploadForm = document.getElementById('document-upload-form');
+        if (documentUploadForm) {
+            documentUploadForm.addEventListener('submit', handleDocumentUpload);
+        }
+        
+        // Upload Type Switch Buttons
+        const btnUploadSingle = document.getElementById('btn-upload-single');
+        const btnUploadFolder = document.getElementById('btn-upload-folder');
+        if (btnUploadSingle) {
+            btnUploadSingle.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchUploadType('single');
+            });
+        }
+        if (btnUploadFolder) {
+            btnUploadFolder.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchUploadType('folder');
+            });
+        }
+        
+        // File Input Change
+        const docFileInput = document.getElementById('doc-file');
+        if (docFileInput) {
+            docFileInput.addEventListener('change', handleDocumentFileSelect);
+        }
+        
+        // Folder Input Change
+        const docFolderInput = document.getElementById('doc-folder');
+        if (docFolderInput) {
+            docFolderInput.addEventListener('change', handleFolderSelect);
+        }
+        
+        const btnCloseDocUpload = document.getElementById('btn-close-document-upload');
+        if (btnCloseDocUpload) {
+            btnCloseDocUpload.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+        
+        const btnCancelDocUpload = document.getElementById('btn-cancel-document-upload');
+        if (btnCancelDocUpload) {
+            btnCancelDocUpload.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+        
+        const docUploadOverlay = document.getElementById('document-upload-modal-overlay');
+        if (docUploadOverlay) {
+            docUploadOverlay.addEventListener('click', (e) => {
+                if (e.target === docUploadOverlay) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeModal();
+                }
+            });
+        }
+        
+        // Document Preview Modal
+        const btnCloseDocPreview = document.getElementById('btn-close-document-preview');
+        if (btnCloseDocPreview) {
+            btnCloseDocPreview.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+        
+        const docPreviewOverlay = document.getElementById('document-preview-modal-overlay');
+        if (docPreviewOverlay) {
+            docPreviewOverlay.addEventListener('click', (e) => {
+                if (e.target === docPreviewOverlay) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeModal();
+                }
+            });
+        }
+        
+        document.querySelectorAll('.btn-download-doc').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const docId = parseInt(btn.dataset.docId);
+                downloadDocument(docId);
+            });
+        });
+        
+        document.querySelectorAll('.btn-delete-doc').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const docId = parseInt(btn.dataset.docId);
+                deleteDocument(docId);
+            });
+        });
+        
+        // Dosya önizleme butonları (göz ikonu)
+        document.querySelectorAll('.btn-preview-doc').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const docId = parseInt(btn.dataset.docId);
+                window.previewDocument(docId);
+            });
+        });
+        
+        // Category accordion headers
+        document.querySelectorAll('.document-category-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const category = header.dataset.category;
+                if (category) {
+                    window.toggleDocumentCategory(category);
+                }
+            });
+        });
+        
+        // Document Selector Modal
+        const btnCloseDocSelector = document.getElementById('btn-close-document-selector');
+        if (btnCloseDocSelector) {
+            btnCloseDocSelector.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+        
+        const btnCancelDocSelector = document.getElementById('btn-cancel-document-selector');
+        if (btnCancelDocSelector) {
+            btnCancelDocSelector.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+        }
+        
+        // 🔥 YENİ BUTON: "YÜKLE" - Seçilen dosyayı hemen yükle
+        const btnUploadSelectedDocument = document.getElementById('btn-upload-selected-document');
+        if (btnUploadSelectedDocument) {
+            btnUploadSelectedDocument.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                selectDocumentFromModal(); // Aynı fonksiyon - sadece buton ismi değişti
+            });
+        }
+        
+        const btnAddDocFromSelector = document.getElementById('btn-add-doc-from-selector');
+        if (btnAddDocFromSelector) {
+            btnAddDocFromSelector.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+                setTimeout(() => openDocumentUploadModal(), 100);
+            });
+        }
+        
+        // 📂 KLASÖR AÇMA/KAPAMA - Folder toggle listeners
+        const folderHeaders = document.querySelectorAll('.doc-folder-header');
+        folderHeaders.forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const folderKey = header.dataset.folder;
+                console.log('📂 Klasör toggle:', folderKey);
+                
+                // State'te klasör durumunu değiştir
+                if (!state.openFolders) state.openFolders = {};
+                state.openFolders[folderKey] = !state.openFolders[folderKey];
+                
+                // Render et
+                saveDataToLocalStorage();
+                renderApp();
+            });
+        });
+        
+        const docSelectorOverlay = document.getElementById('document-selector-modal-overlay');
+        if (docSelectorOverlay) {
+            docSelectorOverlay.addEventListener('click', (e) => {
+                if (e.target === docSelectorOverlay) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeModal();
+                }
+            });
+        }
+        
+        // ============================================
+        // "DOSYALARIMDAN SEÇ" BUTONLARI
+        // ============================================
+        
+        // X (remove) butonlarına event listener ekle
+        document.querySelectorAll('.remove-selection').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const targetInputId = btn.dataset.target;
+                console.log('🗑️ Dosya seçimi kaldırılıyor:', targetInputId);
+                
+                // STATE'den sil
+                if (state.selectedDocumentsForForm && state.selectedDocumentsForForm[targetInputId]) {
+                    delete state.selectedDocumentsForForm[targetInputId];
+                    saveDataToLocalStorage();
+                    renderApp(); // Indicator'ı kaldırmak için render
+                    showToast('Dosya seçimi kaldırıldı', 'info');
+                }
+            });
+        });
+        
+        const btnSelectFromDocs = document.querySelectorAll('.btn-select-from-docs');
+        btnSelectFromDocs.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const targetInputId = btn.dataset.target;
+                const category = btn.dataset.category;
+                
+                // DocumentSelectorModal'ı aç ve callback ile dosya seç
+                openDocumentSelectorModal(category, (selectedDoc) => {
+                    console.log('✅ Dosya seçildi ve yükleniyor:', selectedDoc.name, 'ID:', selectedDoc.id);
+
+                    // 🔥 URL OLUŞTURMA: selectedDoc zaten url içeriyor
+                    let fileUrl = selectedDoc.url;
+                    
+                    // 🔥 EĞER URL YOKSA VEYA LOCAL PATH İSE: Dosyayı yükle ve URL oluştur
+                    if (!fileUrl || fileUrl.startsWith('C:') || fileUrl.startsWith('/') || fileUrl.startsWith('file://')) {
+                        console.warn('⚠️ Geçersiz URL, dosya yüklenemedi:', fileUrl);
+                        showToast('Bu dosya için geçerli bir URL bulunamadı. Lütfen dosyayı yeniden yükleyin.', 'error');
+                        return;
+                    }
+
+                    console.log('✅ Final fileUrl:', fileUrl);
+
+                    // 🔥 HEMEN KAYDET - Düzenleme modundaysa doğrudan kaydet
+                    if (state.isVehicleModalOpen && state.editingVehicleIndex !== null) {
+                        const vehicle = vehiclesData[state.editingVehicleIndex];
+                        console.log('🚗 ARAÇ DÜZENLEME MODU:', vehicle.plate, 'Index:', state.editingVehicleIndex);
+
+                        if (targetInputId === 'insuranceFile') {
+                            vehicle.insuranceFile = selectedDoc.name;
+                            vehicle.insuranceFileUrl = fileUrl;
+                            console.log('✅ Sigorta dosyası yüklendi:', vehicle.insuranceFile, vehicle.insuranceFileUrl);
+                        } else if (targetInputId === 'inspectionFile') {
+                            vehicle.inspectionFile = selectedDoc.name;
+                            vehicle.inspectionFileUrl = fileUrl;
+                            console.log('✅ Muayene dosyası yüklendi:', vehicle.inspectionFile, vehicle.inspectionFileUrl);
+                        } else if (targetInputId === 'licenseFile') {
+                            vehicle.licenseFile = selectedDoc.name;
+                            vehicle.licenseFileUrl = fileUrl;
+                            console.log('✅ Ruhsat dosyası yüklendi:', vehicle.licenseFile, vehicle.licenseFileUrl);
+                        }
+
+                        saveDataToLocalStorage();
+                        renderApp();
+                        showToast('Dosya başarıyla yüklendi!', 'success');
+                        return;
+                    }
+
+                    // 🔥 HEMEN KAYDET - Müşteri düzenleme modundaysa doğrudan kaydet
+                    if (state.isCustomerModalOpen && state.editingCustomerIndex !== null) {
+                        const customer = customersData[state.editingCustomerIndex];
+                        console.log('👤 MÜŞTERİ DÜZENLEME MODU:', customer.name, 'Index:', state.editingCustomerIndex);
+
+                        if (targetInputId === 'idFile') {
+                            customer.idFile = selectedDoc.name;
+                            customer.idFileUrl = fileUrl;
+                            console.log('✅ Kimlik dosyası yüklendi:', customer.idFile, customer.idFileUrl);
+                        } else if (targetInputId === 'licenseFile') {
+                            customer.licenseFile = selectedDoc.name;
+                            customer.licenseFileUrl = fileUrl;
+                            console.log('✅ Ehliyet dosyası yüklendi:', customer.licenseFile, customer.licenseFileUrl);
+                        }
+
+                        saveDataToLocalStorage();
+                        renderApp();
+                        showToast('Dosya başarıyla yüklendi!', 'success');
+                        return;
+                    }
+
+                    // 🔥 HEMEN KAYDET - Kiralama düzenleme modundaysa doğrudan kaydet
+                    if (state.isRentalEditModalOpen && state.editingRentalId !== null) {
+                        const rentalIndex = rentalsData.findIndex(r => r.id === state.editingRentalId);
+                        if (rentalIndex > -1) {
+                            const rental = rentalsData[rentalIndex];
+                            console.log('� KİRALAMA DÜZENLEME MODU:', 'ID:', state.editingRentalId);
+
+                            if (targetInputId === 'contractFile') {
+                                rental.contractFile = selectedDoc.name;
+                                rental.contractFileUrl = fileUrl;
+                                console.log('✅ Kontrat dosyası yüklendi:', rental.contractFile, rental.contractFileUrl);
+                            } else if (targetInputId === 'invoiceFile') {
+                                rental.invoiceFile = selectedDoc.name;
+                                rental.invoiceFileUrl = fileUrl;
+                                console.log('✅ Fatura dosyası yüklendi:', rental.invoiceFile, rental.invoiceFileUrl);
+                            }
+
+                            saveDataToLocalStorage();
+                            renderApp();
+                            showToast('Dosya başarıyla yüklendi!', 'success');
+                            return;
+                        }
+                    }
+
+                    // 🎯 YENİ EKLEME MODU - State'e kaydet, form submit sonrası yükle
+                    if (!state.selectedDocumentsForForm) {
+                        state.selectedDocumentsForForm = {};
+                    }
+                    state.selectedDocumentsForForm[targetInputId] = {
+                        id: selectedDoc.id,
+                        name: selectedDoc.name,
+                        url: fileUrl  // 🔥 Oluşturulan URL'yi kaydet
+                    };
+
+                    console.log('💾 STATE güncellendi (yeni ekleme için):', targetInputId, '→', selectedDoc.name, fileUrl);
+                    saveDataToLocalStorage();
+                    renderApp();
+                    showToast('Dosya seçildi, formu kaydedin!', 'info');
+                });
+            });
+        });
+        
         // console.log('Event listeners attached successfully.');
     }
     catch (error) {
@@ -3252,6 +4016,10 @@ function handleVehicleFormSubmit(e) {
         const insuranceFile = formData.get('insuranceFile'); // Belge dosyalarını al
         const inspectionFile = formData.get('inspectionFile');
         const licenseFile = formData.get('licenseFile');
+        
+        // 🔥 DOSYALARIMDAN SEÇ - selectedDocumentsForForm kontrolü
+        const selectedDocs = state.selectedDocumentsForForm || {};
+        
         const vehicleDataUpdate = {
             plate: formData.get('plate'),
             brand: `${formData.get('brand')} ${formData.get('model')}`,
@@ -3260,47 +4028,114 @@ function handleVehicleFormSubmit(e) {
             insuranceDate: formData.get('insuranceDate'),
             inspectionDate: formData.get('inspectionDate'),
         };
+        console.log('🔍 FORM SUBMIT - selectedDocs:', selectedDocs);
+        console.log('🔍 documentsData:', documentsData);
+        
         if (state.editingVehicleIndex !== null) {
             // Editing existing vehicle
             const originalVehicle = vehiclesData[state.editingVehicleIndex];
-            // Dosya güncellemelerini yönet: sadece yeni bir dosya seçilmişse güncelle
-            if (insuranceFile && insuranceFile.size > 0) {
+            
+            // 🔥 SİGORTA DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['insuranceFile']) {
+                console.log('📂 Sigorta dosyası seçilmiş, ID:', selectedDocs['insuranceFile'].id);
+                const doc = documentsData.find(d => d.id === selectedDocs['insuranceFile'].id);
+                console.log('📄 Bulunan doküman:', doc);
+                if (doc) {
+                    vehicleDataUpdate.insuranceFile = doc.name;
+                    vehicleDataUpdate.insuranceFileUrl = selectedDocs['insuranceFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                    console.log('✅ Sigorta dosyası atandı:', doc.name, 'URL:', selectedDocs['insuranceFile'].url);
+                } else {
+                    console.error('❌ Doküman bulunamadı! ID:', selectedDocs['insuranceFile'].id);
+                }
+            } else if (insuranceFile && insuranceFile.size > 0) {
                 if (originalVehicle.insuranceFileUrl)
                     URL.revokeObjectURL(originalVehicle.insuranceFileUrl);
                 vehicleDataUpdate.insuranceFile = insuranceFile.name;
                 vehicleDataUpdate.insuranceFileUrl = URL.createObjectURL(insuranceFile);
             }
-            if (inspectionFile && inspectionFile.size > 0) {
+            
+            // 🔥 MUAYENE DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['inspectionFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['inspectionFile'].id);
+                if (doc) {
+                    vehicleDataUpdate.inspectionFile = doc.name;
+                    vehicleDataUpdate.inspectionFileUrl = selectedDocs['inspectionFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (inspectionFile && inspectionFile.size > 0) {
                 if (originalVehicle.inspectionFileUrl)
                     URL.revokeObjectURL(originalVehicle.inspectionFileUrl);
                 vehicleDataUpdate.inspectionFile = inspectionFile.name;
                 vehicleDataUpdate.inspectionFileUrl = URL.createObjectURL(inspectionFile);
             }
-            if (licenseFile && licenseFile.size > 0) {
+            
+            // 🔥 RUHSAT DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['licenseFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['licenseFile'].id);
+                if (doc) {
+                    vehicleDataUpdate.licenseFile = doc.name;
+                    vehicleDataUpdate.licenseFileUrl = selectedDocs['licenseFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (licenseFile && licenseFile.size > 0) {
                 if (originalVehicle.licenseFileUrl)
                     URL.revokeObjectURL(originalVehicle.licenseFileUrl);
                 vehicleDataUpdate.licenseFile = licenseFile.name;
                 vehicleDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
+            
             vehiclesData[state.editingVehicleIndex] = Object.assign(Object.assign({}, originalVehicle), vehicleDataUpdate);
         }
         else {
             // Adding new vehicle
-            if (insuranceFile && insuranceFile.size > 0) {
+            console.log('➕ YENİ ARAÇ EKLEME - selectedDocs:', selectedDocs);
+            
+            // 🔥 SİGORTA DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['insuranceFile']) {
+                console.log('📂 Sigorta dosyası seçilmiş (YENİ), ID:', selectedDocs['insuranceFile'].id);
+                const doc = documentsData.find(d => d.id === selectedDocs['insuranceFile'].id);
+                console.log('📄 Bulunan doküman (YENİ):', doc);
+                if (doc) {
+                    vehicleDataUpdate.insuranceFile = doc.name;
+                    vehicleDataUpdate.insuranceFileUrl = selectedDocs['insuranceFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                    console.log('✅ Sigorta dosyası atandı (YENİ):', doc.name, 'URL:', selectedDocs['insuranceFile'].url);
+                } else {
+                    console.error('❌ Doküman bulunamadı (YENİ)! ID:', selectedDocs['insuranceFile'].id);
+                }
+            } else if (insuranceFile && insuranceFile.size > 0) {
                 vehicleDataUpdate.insuranceFile = insuranceFile.name;
                 vehicleDataUpdate.insuranceFileUrl = URL.createObjectURL(insuranceFile);
             }
-            if (inspectionFile && inspectionFile.size > 0) {
+            
+            // 🔥 MUAYENE DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['inspectionFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['inspectionFile'].id);
+                if (doc) {
+                    vehicleDataUpdate.inspectionFile = doc.name;
+                    vehicleDataUpdate.inspectionFileUrl = selectedDocs['inspectionFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (inspectionFile && inspectionFile.size > 0) {
                 vehicleDataUpdate.inspectionFile = inspectionFile.name;
                 vehicleDataUpdate.inspectionFileUrl = URL.createObjectURL(inspectionFile);
             }
-            if (licenseFile && licenseFile.size > 0) {
+            
+            // 🔥 RUHSAT DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['licenseFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['licenseFile'].id);
+                if (doc) {
+                    vehicleDataUpdate.licenseFile = doc.name;
+                    vehicleDataUpdate.licenseFileUrl = selectedDocs['licenseFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (licenseFile && licenseFile.size > 0) {
                 vehicleDataUpdate.licenseFile = licenseFile.name;
                 vehicleDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
+            
             logActivity('fa-car-side', `<strong>${vehicleDataUpdate.plate}</strong> plakalı yeni araç filoya eklendi.`);
             vehiclesData.unshift(vehicleDataUpdate); // Add to the beginning of the array
         }
+        
+        // 🔥 SEÇİLEN DOSYALARI TEMİZLE
+        state.selectedDocumentsForForm = {};
+        
         setState({
             isVehicleModalOpen: false,
             editingVehicleIndex: null,
@@ -3318,6 +4153,10 @@ function handleCustomerFormSubmit(e) {
     try {
         const idFile = formData.get('idFile');
         const licenseFile = formData.get('licenseFile');
+        
+        // 🔥 DOSYALARIMDAN SEÇ - selectedDocumentsForForm kontrolü
+        const selectedDocs = state.selectedDocumentsForForm || {};
+        
         const customerDataUpdate = {
             name: formData.get('name'),
             tc: formData.get('tc'),
@@ -3330,34 +4169,72 @@ function handleCustomerFormSubmit(e) {
         if (state.editingCustomerIndex !== null) {
             // Editing existing customer
             const originalCustomer = customersData[state.editingCustomerIndex];
-            if (idFile && idFile.size > 0) {
+            
+            // 🔥 KİMLİK DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['idFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['idFile'].id);
+                if (doc) {
+                    customerDataUpdate.idFile = doc.name;
+                    customerDataUpdate.idFileUrl = selectedDocs['idFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (idFile && idFile.size > 0) {
                 if (originalCustomer.idFileUrl)
                     URL.revokeObjectURL(originalCustomer.idFileUrl);
                 customerDataUpdate.idFile = idFile.name;
                 customerDataUpdate.idFileUrl = URL.createObjectURL(idFile);
             }
-            if (licenseFile && licenseFile.size > 0) {
+            
+            // 🔥 EHLİYET DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['licenseFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['licenseFile'].id);
+                if (doc) {
+                    customerDataUpdate.licenseFile = doc.name;
+                    customerDataUpdate.licenseFileUrl = selectedDocs['licenseFile'].url; // 🔥 Oluşturulan URL'yi kullan
+                }
+            } else if (licenseFile && licenseFile.size > 0) {
                 if (originalCustomer.licenseFileUrl)
                     URL.revokeObjectURL(originalCustomer.licenseFileUrl);
                 customerDataUpdate.licenseFile = licenseFile.name;
                 customerDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
+            
             customersData[state.editingCustomerIndex] = Object.assign(Object.assign({}, originalCustomer), customerDataUpdate);
         }
         else {
             // Adding new customer
-            if (idFile && idFile.size > 0) {
+            
+            // 🔥 KİMLİK DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['idFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['idFile'].id);
+                if (doc) {
+                    customerDataUpdate.idFile = doc.name;
+                    customerDataUpdate.idFileUrl = doc.url;
+                }
+            } else if (idFile && idFile.size > 0) {
                 customerDataUpdate.idFile = idFile.name;
                 customerDataUpdate.idFileUrl = URL.createObjectURL(idFile);
             }
-            if (licenseFile && licenseFile.size > 0) {
+            
+            // 🔥 EHLİYET DOSYASI - Dosyalarımdan Seç kontrolü
+            if (selectedDocs['licenseFile']) {
+                const doc = documentsData.find(d => d.id === selectedDocs['licenseFile'].id);
+                if (doc) {
+                    customerDataUpdate.licenseFile = doc.name;
+                    customerDataUpdate.licenseFileUrl = doc.url;
+                }
+            } else if (licenseFile && licenseFile.size > 0) {
                 customerDataUpdate.licenseFile = licenseFile.name;
                 customerDataUpdate.licenseFileUrl = URL.createObjectURL(licenseFile);
             }
+            
             const newCustomer = Object.assign({ id: Date.now(), rentals: [] }, customerDataUpdate);
             logActivity('fa-user-plus', `<strong>${newCustomer.name}</strong> adında yeni müşteri kaydedildi.`);
             customersData.unshift(newCustomer);
         }
+        
+        // 🔥 SEÇİLEN DOSYALARI TEMİZLE
+        state.selectedDocumentsForForm = {};
+        
         setState({
             isCustomerModalOpen: false,
             editingCustomerIndex: null,
@@ -3380,29 +4257,53 @@ function handleRentalEditFormSubmit(e) {
         const originalRental = rentalsData[rentalIndex];
         const contractFile = formData.get('contractFile');
         const invoiceFile = formData.get('invoiceFile');
+        
+        // 🔥 DOSYALARIMDAN SEÇ - selectedDocumentsForForm kontrolü
+        const selectedDocs = state.selectedDocumentsForForm || {};
+        
         const rentalDataUpdate = {
             startDate: formData.get('startDate'),
             endDate: formData.get('endDate') || null,
             startKm: parseInt(formData.get('startKm'), 10),
             endKm: formData.get('endKm') ? parseInt(formData.get('endKm'), 10) : null,
         };
-        if (contractFile && contractFile.size > 0) {
+        
+        // 🔥 KONTRAT DOSYASI - Dosyalarımdan Seç kontrolü
+        if (selectedDocs['contractFile']) {
+            const doc = documentsData.find(d => d.id === selectedDocs['contractFile'].id);
+            if (doc) {
+                rentalDataUpdate.contractFile = doc.name;
+                rentalDataUpdate.contractFileUrl = selectedDocs['contractFile'].url; // 🔥 Oluşturulan URL'yi kullan
+            }
+        } else if (contractFile && contractFile.size > 0) {
             if (originalRental.contractFileUrl)
                 URL.revokeObjectURL(originalRental.contractFileUrl);
             rentalDataUpdate.contractFile = contractFile.name;
             rentalDataUpdate.contractFileUrl = URL.createObjectURL(contractFile);
         }
-        if (invoiceFile && invoiceFile.size > 0) {
+        
+        // 🔥 FATURA DOSYASI - Dosyalarımdan Seç kontrolü
+        if (selectedDocs['invoiceFile']) {
+            const doc = documentsData.find(d => d.id === selectedDocs['invoiceFile'].id);
+            if (doc) {
+                rentalDataUpdate.invoiceFile = doc.name;
+                rentalDataUpdate.invoiceFileUrl = selectedDocs['invoiceFile'].url; // 🔥 Oluşturulan URL'yi kullan
+            }
+        } else if (invoiceFile && invoiceFile.size > 0) {
             if (originalRental.invoiceFileUrl)
                 URL.revokeObjectURL(originalRental.invoiceFileUrl);
             rentalDataUpdate.invoiceFile = invoiceFile.name;
             rentalDataUpdate.invoiceFileUrl = URL.createObjectURL(invoiceFile);
         }
+        
         rentalsData[rentalIndex] = Object.assign(Object.assign({}, originalRental), rentalDataUpdate);
+        
+        // 🔥 SEÇİLEN DOSYALARI TEMİZLE
+        state.selectedDocumentsForForm = {};
+        
         setState({ isRentalEditModalOpen: false, editingRentalId: null });
         showToast('Kiralama kaydı güncellendi.', 'success');
-    }
-    catch (error) {
+    } catch (error) {
         console.error("!!! HATA: handleRentalEditFormSubmit içinde:", error);
     }
 }
@@ -4416,12 +5317,40 @@ function loadDataFromLocalStorage() {
                 }).filter(Boolean); // Bozuk veya null kayıtları temizle
             }
             
-            // ✅ YENİ: Dosyaları yükle
+            // ✅ YENİ: Dosyaları yükle ve Blob URL'leri yeniden oluştur
             if (appData.documentsData && Array.isArray(appData.documentsData)) {
-                documentsData = appData.documentsData.map(doc => ({
-                    ...doc,
-                    uploadDate: doc.uploadDate ? new Date(doc.uploadDate) : new Date()
-                }));
+                documentsData = appData.documentsData.map(doc => {
+                    let newUrl = doc.url;
+                    
+                    // LocalStorage dosyaları için Blob URL yeniden oluştur
+                    if (doc.storageType === 'localStorage' && doc.fileData && doc.fileData.startsWith('data:')) {
+                        try {
+                            // Base64'ten Blob oluştur
+                            const byteString = atob(doc.fileData.split(',')[1]);
+                            const mimeString = doc.fileData.split(',')[0].split(':')[1].split(';')[0];
+                            const ab = new ArrayBuffer(byteString.length);
+                            const ia = new Uint8Array(ab);
+                            for (let i = 0; i < byteString.length; i++) {
+                                ia[i] = byteString.charCodeAt(i);
+                            }
+                            const blob = new Blob([ab], { type: mimeString });
+                            newUrl = URL.createObjectURL(blob);
+                            console.log(`🔗 Blob URL yeniden oluşturuldu: ${doc.name}`);
+                        } catch (error) {
+                            console.error(`❌ Blob URL oluşturma hatası (${doc.name}):`, error);
+                            // Hata durumunda fileData'yı kullan (Base64)
+                            newUrl = doc.fileData;
+                        }
+                    }
+                    
+                    return {
+                        ...doc,
+                        url: newUrl,
+                        uploadDate: doc.uploadDate ? new Date(doc.uploadDate) : new Date()
+                    };
+                });
+                
+                console.log(`✅ ${documentsData.length} dosya yüklendi (Blob URL'ler yeniden oluşturuldu)`);
             }
             
             // State'e ait verileri yükle
@@ -4448,10 +5377,20 @@ function loadDataFromLocalStorage() {
 // Otomatik Firebase senkronizasyonu
 function autoSyncWithFirebase() {
     return __awaiter(this, void 0, void 0, function* () {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         if (!((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) || !((_b = state.settings) === null || _b === void 0 ? void 0 : _b.firebaseAutoSync)) {
             return;
         }
+        
+        // 🔐 ŞİFRE KONTROLÜ
+        const savedPassword = ((_d = state.settings) === null || _d === void 0 ? void 0 : _d.firebaseMasterPassword) || '';
+        const correctPassword = '1259';
+        
+        if (savedPassword !== correctPassword) {
+            console.warn('⚠️ Firebase ana şifresi yanlış. Otomatik sync iptal edildi.');
+            return;
+        }
+        
         try {
             // Check if Firebase functions exist
             if (typeof loadDataFromFirebase === 'function' && typeof initializeFirebase === 'function') {
@@ -4475,6 +5414,8 @@ function autoSyncWithFirebase() {
                         maintenanceData = data.maintenanceData;
                     if (data.activitiesData)
                         activitiesData = data.activitiesData;
+                    if (data.documentsData)
+                        documentsData = data.documentsData; // ✅ Dosyaları da yükle
                     if (data.settings) {
                         state.settings = Object.assign(Object.assign({}, state.settings), data.settings);
                     }
@@ -4515,6 +5456,7 @@ function autoBackupToFirebase() {
                         reservationsData,
                         maintenanceData,
                         activitiesData,
+                        documentsData, // ✅ Dosyaları da yedekle
                         settings: state.settings,
                     };
                     yield sendDataToFirebase(dataToSend);
@@ -4568,8 +5510,19 @@ function initializeApp() {
         // 🔥 OTOMATIK FIREBASE SYNC - Uygulama açılırken Firebase'den veri yükle
         if (((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseEnabled) && ((_b = state.settings) === null || _b === void 0 ? void 0 : _b.firebaseAutoSync)) {
             setTimeout(() => __awaiter(this, void 0, void 0, function* () {
-                var _a;
+                var _a, _a2;
                 console.log('🔄 Otomatik Firebase sync başlatılıyor...');
+                
+                // 🔐 ŞİFRE KONTROLÜ
+                const savedPassword = ((_a2 = state.settings) === null || _a2 === void 0 ? void 0 : _a2.firebaseMasterPassword) || '';
+                const correctPassword = '1259';
+                
+                if (savedPassword !== correctPassword) {
+                    console.warn('⚠️ Firebase ana şifresi ayarlanmamış veya yanlış. Otomatik sync iptal edildi.');
+                    showToast('⚠️ Firebase şifresi yanlış. Veriler yüklenmedi.', 'warning');
+                    return;
+                }
+                
                 try {
                     // Firebase'i başlat
                     if (typeof initializeFirebase === 'function') {
@@ -4630,6 +5583,11 @@ function initializeApp() {
                                 });
                                 activitiesData.push(...convertedActivities);
                             }
+                            // ✅ Dosyaları da yükle
+                            if (data.documentsData && Array.isArray(data.documentsData)) {
+                                documentsData.length = 0;
+                                documentsData.push(...data.documentsData);
+                            }
                             // Son yükleme saatini güncelle
                             const now = new Date();
                             const timeString = now.toLocaleTimeString('tr-TR', {
@@ -4637,9 +5595,17 @@ function initializeApp() {
                                 minute: '2-digit',
                                 second: '2-digit'
                             });
-                            setState({
-                                settings: Object.assign(Object.assign({}, state.settings), { lastSyncDate: data.lastUpdate || new Date().toISOString(), lastSyncTime: timeString })
+                            
+                            // 🎯 DIRECT STATE UPDATE - Firebase sync after render prevention
+                            state.settings = Object.assign(Object.assign({}, state.settings), { 
+                                lastSyncDate: data.lastUpdate || new Date().toISOString(), 
+                                lastSyncTime: timeString 
                             });
+                            
+                            // ✅ Single render
+                            saveDataToLocalStorage();
+                            renderApp();
+                            
                             showToast('✅ Firebase verisi yüklendi!', 'success');
                             console.log('✅ Firebase otomatik sync tamamlandı!', {
                                 vehicles: vehiclesData.length,
@@ -4657,6 +5623,93 @@ function initializeApp() {
     }
     catch (error) {
         console.error('❌ Uygulama başlatma hatası:', error);
+    }
+}
+
+/**
+ * ========================================
+ * GLOBAL MODAL FONKSİYONLARI
+ * ========================================
+ */
+
+// Tüm modalları kapat (parametre opsiyonel - eski kod uyumluluğu için)
+function closeModal(modalId) {
+    console.log('� GLOBAL closeModal() çağrıldı, modalId:', modalId);
+    
+    // 🎯 DIRECT STATE UPDATE - Bypass setState to prevent re-render loop
+    state.selectedVehicleForAction = null;
+    state.editingVehicleIndex = null;
+    state.editingCustomerIndex = null;
+    state.editingRentalId = null;
+    state.editingReservationId = null;
+    state.editingMaintenanceId = null;
+    state.selectedDocument = null;
+    state.documentSelectorCallback = null;
+    
+    if (modalId) {
+        // Belirli modal'ı kapat
+        switch (modalId) {
+            case 'vehicle':
+                state.isVehicleModalOpen = false;
+                break;
+            case 'rental':
+                state.isRentalModalOpen = false;
+                break;
+            case 'customer':
+                state.isCustomerModalOpen = false;
+                break;
+            case 'check-in':
+                state.isCheckInModalOpen = false;
+                break;
+            case 'reservation':
+                state.isReservationModalOpen = false;
+                break;
+            case 'reservation-edit':
+                state.isReservationEditModalOpen = false;
+                break;
+            case 'rental-edit':
+                state.isRentalEditModalOpen = false;
+                break;
+            case 'maintenance':
+                state.isMaintenanceModalOpen = false;
+                break;
+            case 'maintenance-edit':
+                state.isMaintenanceEditModalOpen = false;
+                break;
+            case 'document-upload':
+                state.isDocumentUploadModalOpen = false;
+                break;
+            case 'document-preview':
+                state.isDocumentPreviewModalOpen = false;
+                break;
+            case 'document-selector':
+                state.isDocumentSelectorModalOpen = false;
+                break;
+        }
+    } else {
+        // Tüm modalları kapat
+        state.isVehicleModalOpen = false;
+        state.isRentalModalOpen = false;
+        state.isCustomerModalOpen = false;
+        state.isCheckInModalOpen = false;
+        state.isReservationModalOpen = false;
+        state.isMaintenanceModalOpen = false;
+        state.isMaintenanceEditModalOpen = false;
+        state.isRentalEditModalOpen = false;
+        state.isReservationEditModalOpen = false;
+        state.isDocumentUploadModalOpen = false;
+        state.isDocumentPreviewModalOpen = false;
+        state.isDocumentSelectorModalOpen = false;
+    }
+    
+    // ✅ Kaydet ama RENDER YAPMA!
+    // Document selector gibi callback içinde DOM manipülasyonu yapan modallar için
+    // render çağrısı callback işlemi tamamlandıktan sonra yapılmalı
+    saveDataToLocalStorage();
+    
+    // 🎯 Render sadece document-selector DIŞINDA
+    if (modalId !== 'document-selector' && !state.isDocumentSelectorModalOpen) {
+        renderApp();
     }
 }
 
@@ -4683,22 +5736,321 @@ function toggleDocumentCategory(category) {
 
 // Dosya yükleme modalını aç
 function openDocumentUploadModal() {
-    setState({ isDocumentUploadModalOpen: true });
+    console.log('📤 openDocumentUploadModal() çağrıldı');
+    
+    // 🎯 Direct state + single render
+    state.isDocumentUploadModalOpen = true;
+    saveDataToLocalStorage();
+    renderApp();
 }
 
 // Dosya önizleme modalını aç
 function previewDocument(documentId) {
     const document = documentsData.find(doc => doc.id === documentId);
     if (document) {
-        setState({ 
-            isDocumentPreviewModalOpen: true,
-            selectedDocument: document
-        });
+        console.log('👁️ previewDocument() çağrıldı, ID:', documentId);
+        
+        // 🎯 Direct state + single render
+        state.isDocumentPreviewModalOpen = true;
+        state.selectedDocument = documentId;
+        saveDataToLocalStorage();
+        renderApp();
     }
 }
 
+// Dosya indirme
+function downloadDocument(documentId) {
+    const doc = documentsData.find(d => d.id === documentId);
+    if (!doc) {
+        showToast('Dosya bulunamadı', 'error');
+        return;
+    }
+    
+    const downloadUrl = doc.storageType === 'firebase' ? doc.url : doc.fileData;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = doc.name;
+    link.click();
+    
+    showToast('Dosya indiriliyor...', 'success');
+    logActivity('fa-solid fa-download', `Dosya indirildi: ${doc.name}`);
+}
+
+// Dosya seçici modal aç (araç/kiralama formlarından çağrılır)
+function openDocumentSelectorModal(category, callback) {
+    console.log('📂 openDocumentSelectorModal() çağrıldı, category:', category);
+    
+    // 🎯 Direct state + single render
+    state.isDocumentSelectorModalOpen = true;
+    state.documentSelectorCategory = category || '';
+    state.documentSelectorCallback = callback;
+    saveDataToLocalStorage();
+    renderApp();
+}
+
+// Dosya seçici modal'dan dosya seç VE HEMEN YÜKLE
+function selectDocumentFromModal() {
+    const selectedRadio = document.querySelector('input[name="selected-document"]:checked');
+    if (!selectedRadio) {
+        showToast('Lütfen bir dosya seçin', 'error');
+        return;
+    }
+
+    const documentId = parseInt(selectedRadio.value);
+    const doc = documentsData.find(d => d.id === documentId);
+
+    if (doc && state.documentSelectorCallback) {
+        console.log('📄 Dosya seçildi ve yükleniyor:', doc.name, 'ID:', doc.id);
+
+        // 🔥 HEMEN YÜKLE - Callback'i çağır
+        state.documentSelectorCallback(doc);
+
+        // Modal kapat ve başarı mesajı
+        closeModal();
+        showToast('Dosya başarıyla yüklendi!', 'success');
+    } else {
+        console.error('❌ Dosya bulunamadı veya callback yok');
+        showToast('Dosya yüklenirken hata oluştu', 'error');
+    }
+}
+
+// Dosya input change handler
+// Yükleme tipi değiştirme
+function switchUploadType(type) {
+    const singleBtn = document.getElementById('btn-upload-single');
+    const folderBtn = document.getElementById('btn-upload-folder');
+    const singleUpload = document.getElementById('single-file-upload');
+    const folderUpload = document.getElementById('folder-upload');
+    
+    if (type === 'single') {
+        singleBtn?.classList.add('active');
+        folderBtn?.classList.remove('active');
+        if (singleUpload) singleUpload.style.display = 'block';
+        if (folderUpload) folderUpload.style.display = 'none';
+    } else {
+        singleBtn?.classList.remove('active');
+        folderBtn?.classList.add('active');
+        if (singleUpload) singleUpload.style.display = 'none';
+        if (folderUpload) folderUpload.style.display = 'block';
+    }
+}
+
+// Klasör seçimi
+function handleFolderSelect(event) {
+    const files = Array.from(event.target.files);
+    if (!files || files.length === 0) return;
+    
+    console.log(`📁 ${files.length} dosya seçildi`);
+    
+    // Önizleme göster
+    const preview = document.getElementById('doc-file-preview');
+    const iconEl = document.getElementById('doc-file-icon');
+    const nameEl = document.getElementById('doc-file-name');
+    const sizeEl = document.getElementById('doc-file-size');
+    
+    if (preview && iconEl && nameEl && sizeEl) {
+        iconEl.className = 'fa-solid fa-folder';
+        nameEl.textContent = `${files.length} dosya seçildi`;
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        sizeEl.textContent = `Toplam: ${(totalSize / (1024 * 1024)).toFixed(2)} MB`;
+        preview.style.display = 'block';
+    }
+}
+
+// Klasör yükleme işlemi
+async function handleFolderUpload(fileList, category, tags) {
+    const files = Array.from(fileList);
+    const totalFiles = files.length;
+    let uploadedFiles = 0;
+    let skippedFiles = 0;
+    
+    try {
+        // Progress bar göster
+        const progressContainer = document.getElementById('upload-progress');
+        const progressFill = document.getElementById('upload-progress-fill');
+        const progressText = document.getElementById('upload-progress-text');
+        const uploadBtn = document.getElementById('btn-upload-document');
+        
+        if (progressContainer) progressContainer.style.display = 'block';
+        if (uploadBtn) uploadBtn.disabled = true;
+        
+        console.log(`📁 ${totalFiles} dosya yüklenecek...`);
+        
+        // Her dosyayı sırayla yükle
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Sadece desteklenen dosya tiplerini yükle
+            const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx'];
+            const fileName = file.name.toLowerCase();
+            const isValid = validExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!isValid) {
+                console.warn(`⏭️ Desteklenmeyen dosya: ${file.name}`);
+                skippedFiles++;
+                continue;
+            }
+            
+            // Dosya boyutu kontrolü (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                console.warn(`⏭️ Çok büyük dosya (>10MB): ${file.name}`);
+                skippedFiles++;
+                continue;
+            }
+            
+            try {
+                // Otomatik kategori belirleme (dosya adına göre)
+                let autoCategory = category;
+                const lowerName = fileName.toLowerCase();
+                if (lowerName.includes('sigorta') || lowerName.includes('insurance')) {
+                    autoCategory = 'Sigortalar';
+                } else if (lowerName.includes('muayene') || lowerName.includes('inspection')) {
+                    autoCategory = 'Muayeneler';
+                } else if (lowerName.includes('ruhsat') || lowerName.includes('license')) {
+                    autoCategory = 'Ruhsatlar';
+                } else if (lowerName.includes('fatura') || lowerName.includes('invoice')) {
+                    autoCategory = 'Faturalar';
+                }
+                
+                // Dosya tipini belirle
+                const fileType = file.type.includes('pdf') ? 'pdf' : 
+                                file.type.includes('image') ? 'image' : 'other';
+                
+                let fileUrl = '';
+                let storageType = 'firebaseStorage';
+                let base64Data = null;
+                
+                // Firebase Storage'a yükle
+                try {
+                    if (typeof uploadFileToStorage === 'function') {
+                        // Progress callback
+                        const progressCallback = (progress) => {
+                            console.log(`📤 ${file.name}: ${progress}%`);
+                        };
+                        
+                        // Firebase Storage'a yükle
+                        fileUrl = await uploadFileToStorage(file, autoCategory, progressCallback);
+                        console.log(`✅ Firebase Storage URL: ${fileUrl}`);
+                    } else {
+                        throw new Error('uploadFileToStorage fonksiyonu bulunamadı');
+                    }
+                } catch (uploadError) {
+                    console.warn(`⚠️ Firebase Storage yüklenemedi (${file.name}), Base64 kullanılıyor:`, uploadError);
+                    
+                    // Fallback: Base64 encoding
+                    base64Data = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
+                    
+                    // Blob URL oluştur
+                    const blob = new Blob([file], { type: file.type });
+                    fileUrl = URL.createObjectURL(blob);
+                    storageType = 'localStorage';
+                }
+                
+                // Document objesi oluştur
+                const newDocument = {
+                    id: Date.now() + i, // Unique ID
+                    name: file.name,
+                    category: autoCategory,
+                    type: fileType,
+                    storageType: storageType,
+                    url: fileUrl,
+                    fileData: base64Data, // Firebase'de null, localStorage'da Base64
+                    size: file.size,
+                    uploadDate: new Date(),
+                    linkedVehicles: [],
+                    tags: tags ? tags.split(',').map(t => t.trim()) : []
+                };
+                
+                // Array'e ekle
+                documentsData.push(newDocument);
+                uploadedFiles++;
+                
+                console.log(`✅ ${i + 1}/${totalFiles}: ${file.name}`);
+                
+            } catch (fileError) {
+                console.error(`❌ Dosya yükleme hatası (${file.name}):`, fileError);
+                skippedFiles++;
+            }
+            
+            // Progress güncelle
+            const progress = Math.round(((i + 1) / totalFiles) * 100);
+            if (progressFill) progressFill.style.width = progress + '%';
+            if (progressText) progressText.textContent = `Yükleniyor... ${i + 1}/${totalFiles} (${progress}%)`;
+            
+            // Her 5 dosyada bir kısa bekleme (UI donmaması için)
+            if (i % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+        }
+        
+        // Tamamlandı
+        saveDataToLocalStorage();
+        closeModal();
+        
+        showToast(`${uploadedFiles} dosya başarıyla yüklendi! ${skippedFiles > 0 ? `(${skippedFiles} dosya atlandı)` : ''}`, 'success');
+        logActivity('fa-solid fa-folder', `${uploadedFiles} dosya toplu yüklendi`);
+        
+    } catch (error) {
+        console.error('!!! HATA: handleFolderUpload içinde:', error);
+        showToast('Klasör yükleme hatası: ' + error.message, 'error');
+        
+        // Progress bar ve button'ı geri al
+        const progressContainer = document.getElementById('upload-progress');
+        const uploadBtn = document.getElementById('btn-upload-document');
+        if (progressContainer) progressContainer.style.display = 'none';
+        if (uploadBtn) uploadBtn.disabled = false;
+    }
+}
+
+function handleDocumentFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Dosya boyutu kontrolü (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('Dosya boyutu 10MB\'dan büyük olamaz', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    // Önizleme göster
+    const preview = document.getElementById('doc-file-preview');
+    const iconEl = document.getElementById('doc-file-icon');
+    const nameEl = document.getElementById('doc-file-name');
+    const sizeEl = document.getElementById('doc-file-size');
+    
+    if (preview && iconEl && nameEl && sizeEl) {
+        const fileType = file.type;
+        if (fileType.includes('pdf')) {
+            iconEl.className = 'fa-solid fa-file-pdf';
+        } else if (fileType.includes('image')) {
+            iconEl.className = 'fa-solid fa-file-image';
+        } else {
+            iconEl.className = 'fa-solid fa-file';
+        }
+        
+        nameEl.textContent = file.name;
+        sizeEl.textContent = formatFileSize(file.size);
+        preview.style.display = 'block';
+    }
+}
+
+// Dosya boyutu formatlama
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
+
 // Dosya sil
-function deleteDocument(documentId) {
+async function deleteDocument(documentId) {
     if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) {
         return;
     }
@@ -4708,26 +6060,262 @@ function deleteDocument(documentId) {
         const doc = documentsData[docIndex];
         
         // Firebase Storage'dan sil (eğer Firebase'de ise)
-        if (doc.storageType === 'firebase' && doc.url) {
-            if (typeof deleteDocumentFromStorage === 'function') {
-                deleteDocumentFromStorage(doc.url)
-                    .then(() => {
-                        console.log('Dosya Firebase Storage silindi');
-                    })
-                    .catch(err => {
-                        console.error('Firebase Storage silme hatasi:', err);
-                    });
+        if (doc.storageType === 'firebaseStorage' && doc.url) {
+            try {
+                if (typeof deleteFileFromStorage === 'function') {
+                    await deleteFileFromStorage(doc.url);
+                    console.log('✅ Dosya Firebase Storage\'dan silindi');
+                } else {
+                    console.warn('⚠️ deleteFileFromStorage fonksiyonu bulunamadı');
+                }
+            } catch (err) {
+                console.error('❌ Firebase Storage silme hatası:', err);
+                // Devam et, en azından metadata'dan sil
             }
         }
         
         // Array'den sil
         documentsData.splice(docIndex, 1);
         
-        // Kaydet ve render
+        // Sadece kaydet - renderApp() GEREKSİZ
         saveDataToLocalStorage();
-        renderApp();
         
         showToast('Dosya silindi', 'success');
         logActivity('fa-solid fa-trash', `Dosya silindi: ${doc.name}`);
     }
 }
+
+// Dosya yükleme form submit handler
+async function handleDocumentUpload(e) {
+    e.preventDefault();
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const category = formData.get('category');
+    const file = formData.get('file');
+    const folder = form.querySelector('#doc-folder');
+    const tags = formData.get('tags');
+    
+    // Klasör mü yoksa tek dosya mı?
+    const isFolder = folder && folder.files && folder.files.length > 0;
+    
+    console.log('📋 Form submit debug:', {
+        category,
+        hasFile: !!file,
+        hasFolder: !!folder,
+        folderFilesCount: folder?.files?.length || 0,
+        isFolder
+    });
+    
+    if (!category) {
+        showToast('Lütfen kategori seçin', 'error');
+        return;
+    }
+    
+    if (!isFolder && !file) {
+        showToast('Lütfen dosya veya klasör seçin', 'error');
+        return;
+    }
+    
+    // Klasör yükleme
+    if (isFolder) {
+        console.log(`📁 Klasör yükleme başlatılıyor: ${folder.files.length} dosya`);
+        await handleFolderUpload(folder.files, category, tags);
+        return;
+    }
+    
+    try {
+        // Progress bar göster
+        const progressContainer = document.getElementById('upload-progress');
+        const progressFill = document.getElementById('upload-progress-fill');
+        const progressText = document.getElementById('upload-progress-text');
+        const uploadBtn = document.getElementById('btn-upload-document');
+        
+        if (progressContainer) progressContainer.style.display = 'block';
+        if (uploadBtn) uploadBtn.disabled = true;
+        
+        // Dosya tipini belirle
+        const fileType = file.type.includes('pdf') ? 'pdf' : 
+                        file.type.includes('image') ? 'image' : 'other';
+        
+        let fileUrl = '';
+        let storageType = 'firebaseStorage';
+        let fileData = null;
+        
+        // Firebase Storage'a yükle
+        try {
+            if (typeof uploadFileToStorage === 'function') {
+                fileUrl = await uploadFileToStorage(file, category, (progress) => {
+                    // Progress callback
+                    if (progressFill) progressFill.style.width = progress + '%';
+                    if (progressText) progressText.textContent = `Yükleniyor... ${progress}%`;
+                });
+                console.log('✅ Firebase Storage URL:', fileUrl);
+            } else {
+                throw new Error('uploadFileToStorage fonksiyonu bulunamadı');
+            }
+        } catch (uploadError) {
+            console.warn('⚠️ Firebase Storage yüklenemedi, Base64 kullanılıyor:', uploadError);
+            
+            // Fallback: Base64 encoding
+            const reader = new FileReader();
+            fileData = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            
+            // Blob URL oluştur
+            const blob = new Blob([file], { type: file.type });
+            fileUrl = URL.createObjectURL(blob);
+            storageType = 'localStorage';
+            console.log('🔗 LocalStorage için Blob URL oluşturuldu:', fileUrl);
+            
+            // Progress animasyonu (fake)
+            for (let i = 0; i <= 100; i += 20) {
+                if (progressFill) progressFill.style.width = i + '%';
+                if (progressText) progressText.textContent = `Yükleniyor... ${i}%`;
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+        }
+        
+        // Yeni document objesi oluştur
+        const newDocument = {
+            id: Date.now(),
+            name: file.name,
+            category: category,
+            type: fileType,
+            storageType: storageType,
+            url: fileUrl, // 🔥 Artık her zaman dolu olacak
+            fileData: fileData,
+            size: file.size,
+            uploadDate: new Date(),
+            linkedVehicles: [],
+            tags: tags ? tags.split(',').map(t => t.trim()) : []
+        };
+        
+        // Array'e ekle
+        documentsData.push(newDocument);
+        
+        // closeModal() zaten saveDataToLocalStorage() çağırır - renderApp() GEREKSİZ
+        closeModal();
+        
+        showToast('Dosya başarıyla yüklendi', 'success');
+        logActivity('fa-solid fa-cloud-arrow-up', `Yeni dosya yüklendi: ${file.name}`);
+        
+    } catch (error) {
+        console.error('!!! HATA: handleDocumentUpload içinde:', error);
+        showToast('Dosya yükleme hatası: ' + error.message, 'error');
+        
+        // Progress bar ve button'ı geri al
+        const progressContainer = document.getElementById('upload-progress');
+        const uploadBtn = document.getElementById('btn-upload-document');
+        if (progressContainer) progressContainer.style.display = 'none';
+        if (uploadBtn) uploadBtn.disabled = false;
+    }
+}
+
+// ============================================
+// GLOBAL FONKSİYONLAR - INLINE ONCLICK İÇİN
+// ============================================
+
+// Kategori toggle (accordion)
+window.toggleDocumentCategory = function(category) {
+    const content = document.getElementById(`category-${category}`);
+    const header = content?.previousElementSibling;
+    
+    if (content && header) {
+        const isOpen = content.classList.contains('open');
+        
+        if (isOpen) {
+            content.classList.remove('open');
+        } else {
+            content.classList.add('open');
+        }
+        
+        const chevron = header.querySelector('.category-chevron');
+        if (chevron) {
+            chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+    }
+};
+
+// Dosya önizleme modal aç
+window.previewDocument = function(documentId) {
+    const document = documentsData.find(doc => doc.id === documentId);
+    if (document) {
+        console.log('👁️ window.previewDocument() çağrıldı, ID:', documentId);
+        
+        // 🎯 Direct state + single render - DUPLICATE REMOVED
+        state.isDocumentPreviewModalOpen = true;
+        state.selectedDocument = documentId;
+        saveDataToLocalStorage();
+        renderApp();
+    }
+};
+
+// Dosya sil
+window.deleteDocument = function(documentId) {
+    if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) {
+        return;
+    }
+    
+    const doc = documentsData.find(d => d.id === documentId);
+    if (!doc) return;
+    
+    // Firebase'den sil
+    if (doc.storageType === 'firebase' && typeof deleteDocumentFromStorage === 'function') {
+        deleteDocumentFromStorage(doc.url)
+            .then(() => {
+                // Array'den çıkar
+                const index = documentsData.findIndex(d => d.id === documentId);
+                if (index > -1) {
+                    documentsData.splice(index, 1);
+                }
+                
+                // closeModal() zaten saveDataToLocalStorage() çağırır - renderApp() GEREKSİZ
+                closeModal(); // Preview modal'ı kapat
+                
+                showToast('Dosya başarıyla silindi', 'success');
+                logActivity('fa-solid fa-trash', `Dosya silindi: ${doc.name}`);
+            })
+            .catch(error => {
+                console.error('Dosya silme hatası:', error);
+                showToast('Dosya silinemedi: ' + error.message, 'error');
+            });
+    } else {
+        // LocalStorage'dan sil
+        const index = documentsData.findIndex(d => d.id === documentId);
+        if (index > -1) {
+            documentsData.splice(index, 1);
+        }
+        
+        // closeModal() zaten saveDataToLocalStorage() çağırır - renderApp() GEREKSİZ
+        closeModal(); // Preview modal'ı kapat
+        
+        showToast('Dosya başarıyla silindi', 'success');
+        logActivity('fa-solid fa-trash', `Dosya silindi: ${doc.name}`);
+    }
+};
+
+// Dosya seçici modal aç (inline onclick için)
+window.openDocumentSelectorModal = function(category, callback) {
+    console.log('📂 window.openDocumentSelectorModal() çağrıldı, category:', category);
+    
+    // 🎯 Direct state + single render
+    state.isDocumentSelectorModalOpen = true;
+    state.documentSelectorCategory = category || '';
+    state.documentSelectorCallback = callback;
+    saveDataToLocalStorage();
+    renderApp();
+};
+
+// Dosya yükleme modal aç (inline onclick için)
+window.openDocumentUploadModal = function() {
+    console.log('📤 window.openDocumentUploadModal() çağrıldı');
+    
+    // 🎯 Direct state + single render
+    state.isDocumentUploadModalOpen = true;
+    saveDataToLocalStorage();
+    renderApp();
+};

@@ -875,6 +875,10 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     width: 90%;
     max-width: 600px;
+    max-height: 90vh; /* Viewport'un %90'ı kadar yükseklik */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* İçerik taşmasını önle */
     animation: slideIn 0.3s ease-out;
 }
 
@@ -907,7 +911,29 @@ body {
 }
 .modal-form {
     padding: 24px;
+    overflow-y: auto; /* İçerik taşarsa scroll bar göster */
+    flex: 1; /* Modal içinde kalan alanı kapla */
 }
+
+/* Modal form scrollbar özelleştirmesi */
+.modal-form::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-form::-webkit-scrollbar-track {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.modal-form::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.modal-form::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
 .form-row {
     display: flex;
     gap: 20px;
@@ -3611,9 +3637,14 @@ input:checked + .slider:before {
 }
 
 .document-category-content {
-    max-height: 0;
+    display: none;
+    padding: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: all 0.3s ease;
+}
+
+.document-category-content.open {
+    display: block;
 }
 
 /* Documents Grid */
@@ -3634,6 +3665,20 @@ input:checked + .slider:before {
     border: 1px solid #e9ecef;
     border-radius: 8px;
     transition: all 0.3s ease;
+}
+
+.document-card-checkbox {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.document-card-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--primary-color);
 }
 
 .document-card:hover {
@@ -3790,4 +3835,460 @@ input:checked + .slider:before {
     .empty-state h3 {
         font-size: 20px;
     }
+}
+
+/* ========================================
+   DOSYA YÖNETİMİ MODAL CSS
+   ======================================== */
+
+/* Document Modals - Mevcut uygulama stiline uygun */
+.document-preview-modal {
+    max-width: 900px;
+    max-height: 90vh;
+}
+
+.document-selector-modal {
+    max-width: 700px;
+    max-height: 85vh; /* Ekranın %85'i */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Document selector modal içindeki form */
+.document-selector-modal .modal-form {
+    overflow-y: auto;
+    max-height: calc(85vh - 120px); /* Header ve footer için alan bırak */
+}
+
+/* Document Meta Info (Preview Modal) */
+.document-meta-info {
+    padding: 8px 24px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: var(--background-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* File Preview Card - Upload Modal */
+.file-preview-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--background-color);
+    border-radius: 8px;
+    border: 2px dashed var(--primary-color);
+    margin-top: 8px;
+}
+
+.file-preview-card i {
+    font-size: 28px;
+    color: var(--primary-color);
+}
+
+.file-preview-info {
+    flex: 1;
+}
+
+.file-preview-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.file-preview-info p:first-child {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+/* Upload Progress Bar - Mevcut stil */
+.upload-progress {
+    margin-top: 16px;
+    padding: 12px 0;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 20px;
+    background: var(--background-color);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.upload-progress p {
+    margin: 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Document Preview Body */
+.document-preview-body {
+    min-height: 500px;
+    max-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background-color);
+    padding: 16px 24px;
+}
+
+.document-iframe {
+    width: 100%;
+    height: 500px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.document-image {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.document-no-preview {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.document-no-preview i {
+    font-size: 48px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.document-no-preview p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+/* Modal Footer Override for Document Modals */
+.document-preview-modal .modal-footer,
+.document-selector-modal .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* Document Selector Modal */
+.selector-filter-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1));
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.selector-filter-info i {
+    color: var(--primary-color);
+}
+
+.document-selector-list {
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.document-selector-item {
+    display: block;
+    cursor: pointer;
+    position: relative;
+}
+
+.document-selector-item input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.document-selector-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.document-selector-card:hover {
+    border-color: var(--primary-color);
+    background: rgba(var(--primary-rgb), 0.05);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.document-selector-item input[type="radio"]:checked + .document-selector-card {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--accent-rgb), 0.1));
+    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+.document-selector-card i {
+    font-size: 28px;
+    color: var(--primary-color);
+}
+
+.document-selector-info {
+    flex: 1;
+}
+
+.document-selector-info h4 {
+    margin: 0 0 2px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.document-selector-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* 🗂️ KLASÖR YAPISI - Document Selector Folders */
+.document-selector-folders {
+    max-height: 60vh; /* Viewport'un %60'ı kadar yükseklik */
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-right: 8px;
+}
+
+/* Scrollbar özelleştirmesi */
+.document-selector-folders::-webkit-scrollbar {
+    width: 8px;
+}
+
+.document-selector-folders::-webkit-scrollbar-track {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.document-selector-folders::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.document-selector-folders::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+.doc-folder {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--card-bg);
+    transition: box-shadow 0.3s ease;
+}
+
+.doc-folder:hover {
+    box-shadow: var(--shadow-hover);
+}
+
+.doc-folder-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, rgba(91, 134, 229, 0.08), rgba(54, 229, 167, 0.08));
+    border-bottom: 1px solid var(--border-color);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.doc-folder-header:hover {
+    background: linear-gradient(135deg, rgba(91, 134, 229, 0.15), rgba(54, 229, 167, 0.15));
+    transform: translateX(2px);
+}
+
+.doc-folder-header i {
+    font-size: 18px;
+    color: var(--primary-color);
+    transition: transform 0.3s ease;
+}
+
+.folder-toggle-icon {
+    margin-left: auto;
+    font-size: 14px !important;
+    color: var(--text-secondary) !important;
+    transition: transform 0.3s ease;
+}
+
+.folder-open .folder-toggle-icon {
+    transform: rotate(180deg);
+}
+
+.doc-folder-count {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--background-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.doc-folder-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px; /* Her klasörün içeriği max 400px */
+    overflow-y: auto; /* İçerik taşarsa scroll */
+    transition: all 0.3s ease;
+}
+
+/* Klasör içeriği scrollbar */
+.doc-folder-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.doc-folder-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.doc-folder-content::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.doc-folder-content::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .document-modal,
+    .document-preview-modal,
+    .document-selector-modal {
+        max-width: 95vw;
+        margin: 10px;
+    }
+    
+    .document-selector-folders {
+        max-height: 400px;
+    }
+    
+    .doc-folder-header {
+        font-size: 14px;
+        padding: 12px 14px;
+    }
+    
+    .document-preview-body {
+        height: 400px;
+    }
+    
+    .file-preview-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .document-selector-card {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* ============================================
+   DOSYALARIMDAN SEÇ BUTONU - FILE INPUT İLE
+   ============================================ */
+
+.file-input-with-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.file-input-with-selector .file-input-wrapper {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.btn-select-from-docs {
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 170px;
+    transition: all 0.2s ease;
+}
+
+.btn-select-from-docs:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-select-from-docs i {
+    margin-right: 6px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Seçilen dosya göstergesi */
+.selected-document-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--success-color);
+    color: white;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.selected-document-indicator i {
+    color: white;
+}
+
+.selected-document-indicator .remove-selection {
+    margin-left: auto;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+}
+
+.selected-document-indicator .remove-selection:hover {
+    opacity: 1;
 }

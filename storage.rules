@@ -1,0 +1,9 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Dokuman klasörü - herkese açık (test amaçlı)
+    match /documents/{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}
