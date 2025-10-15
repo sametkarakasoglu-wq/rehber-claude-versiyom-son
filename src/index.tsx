@@ -2113,25 +2113,31 @@ const App = () => {
   }
 
   return `
-    <!-- Hamburger Menu Button (Mobile) -->
-    <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menüyü Aç/Kapat">
-      <i class="fa-solid fa-bars"></i>
-    </button>
+    <div class="app-container">
+      <!-- Hamburger Menu Button (Mobile) - GÜNCEL -->
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menüyü Aç/Kapat">
+        <i class="fa-solid fa-bars" id="menu-icon"></i>
+      </button>
 
-    <!-- Sidebar Overlay (Mobile) -->
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+      <!-- Sidebar Overlay (Mobile) -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">
-          ${state.settings.companyInfo.logo ? `
-            <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
-          ` : `
-            <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
-            <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
-          `}
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <!-- Mobil Geri Butonu -->
+          <button class="mobile-back-btn" id="mobile-back-btn" aria-label="Geri">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          
+          <div class="sidebar-logo">
+            ${state.settings.companyInfo.logo ? `
+              <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+            ` : `
+              <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
+              <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
+            `}
+          </div>
         </div>
-      </div>
       <ul class="nav-menu">
         ${navItems.map(item => `
           <li>
@@ -2143,18 +2149,21 @@ const App = () => {
         `).join('')}
       </ul>
     </nav>
+    
     <main class="main-content">
       ${pageContent}
     </main>
-      ${state.isVehicleModalOpen ? VehicleModal() : ''}
-      ${state.isRentalModalOpen ? RentalModal() : ''}
-      ${state.isCustomerModalOpen ? CustomerModal() : ''}
-      ${state.isCheckInModalOpen ? CheckInModal() : ''}
-      ${state.isReservationModalOpen ? ReservationModal() : ''}
-      ${state.isMaintenanceModalOpen ? MaintenanceModal() : ''}
-      ${state.isMaintenanceEditModalOpen ? MaintenanceEditModal() : ''}
-      ${state.isRentalEditModalOpen ? RentalEditModal() : ''}
-      ${state.isReservationEditModalOpen ? ReservationEditModal() : ''}
+    
+    ${state.isVehicleModalOpen ? VehicleModal() : ''}
+    ${state.isRentalModalOpen ? RentalModal() : ''}
+    ${state.isCustomerModalOpen ? CustomerModal() : ''}
+    ${state.isCheckInModalOpen ? CheckInModal() : ''}
+    ${state.isReservationModalOpen ? ReservationModal() : ''}
+    ${state.isMaintenanceModalOpen ? MaintenanceModal() : ''}
+    ${state.isMaintenanceEditModalOpen ? MaintenanceEditModal() : ''}
+    ${state.isRentalEditModalOpen ? RentalEditModal() : ''}
+    ${state.isReservationEditModalOpen ? ReservationEditModal() : ''}
+    </div>
   `;
 };
 
@@ -2256,6 +2265,19 @@ function attachEventListeners() {
                 }
             });
         });
+        
+        // Mobile Back Button
+        const mobileBackBtn = document.getElementById('mobile-back-btn');
+        if (mobileBackBtn) {
+            mobileBackBtn.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                sidebarOverlay.classList.remove('active');
+                const icon = mobileMenuToggle.querySelector('i');
+                if (icon) {
+                    icon.className = 'fa-solid fa-bars';
+                }
+            });
+        }
     }
     
     // Theme switcher
