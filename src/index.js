@@ -1966,17 +1966,31 @@ const App = () => {
             pageContent = DashboardPage();
     }
     return `
-    <nav class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">
-          ${state.settings.companyInfo.logo ? `
-            <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
-          ` : `
-            <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
-            <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
-          `}
+    <div class="app-container">
+      <!-- Hamburger Menu Button (Mobile) - GÜNCEL -->
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menüyü Aç/Kapat">
+        <i class="fa-solid fa-bars" id="menu-icon"></i>
+      </button>
+
+      <!-- Sidebar Overlay (Mobile) -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <!-- Mobil Geri Butonu -->
+          <button class="mobile-back-btn" id="mobile-back-btn" aria-label="Geri">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          
+          <div class="sidebar-logo">
+            ${state.settings.companyInfo.logo ? `
+              <img src="${state.settings.companyInfo.logo}" alt="${state.settings.companyInfo.name}" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+            ` : `
+              <i class="fa-solid fa-car" style="font-size: 24px; margin-right: 10px; color: #007bff;"></i>
+              <span style="font-size: 20px; font-weight: 700; color: #333;">${state.settings.companyInfo.name}</span>
+            `}
+          </div>
         </div>
-      </div>
       <ul class="nav-menu">
         ${navItems.map(item => `
           <li>
@@ -1988,18 +2002,21 @@ const App = () => {
         `).join('')}
       </ul>
     </nav>
+    
     <main class="main-content">
       ${pageContent}
     </main>
-      ${state.isVehicleModalOpen ? VehicleModal() : ''}
-      ${state.isRentalModalOpen ? RentalModal() : ''}
-      ${state.isCustomerModalOpen ? CustomerModal() : ''}
-      ${state.isCheckInModalOpen ? CheckInModal() : ''}
-      ${state.isReservationModalOpen ? ReservationModal() : ''}
-      ${state.isMaintenanceModalOpen ? MaintenanceModal() : ''}
-      ${state.isMaintenanceEditModalOpen ? MaintenanceEditModal() : ''}
-      ${state.isRentalEditModalOpen ? RentalEditModal() : ''}
-      ${state.isReservationEditModalOpen ? ReservationEditModal() : ''}
+    
+    ${state.isVehicleModalOpen ? VehicleModal() : ''}
+    ${state.isRentalModalOpen ? RentalModal() : ''}
+    ${state.isCustomerModalOpen ? CustomerModal() : ''}
+    ${state.isCheckInModalOpen ? CheckInModal() : ''}
+    ${state.isReservationModalOpen ? ReservationModal() : ''}
+    ${state.isMaintenanceModalOpen ? MaintenanceModal() : ''}
+    ${state.isMaintenanceEditModalOpen ? MaintenanceEditModal() : ''}
+    ${state.isRentalEditModalOpen ? RentalEditModal() : ''}
+    ${state.isReservationEditModalOpen ? ReservationEditModal() : ''}
+    </div>
   `;
 };
 function renderApp() {
@@ -2052,6 +2069,62 @@ function attachEventListeners() {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14;
     try {
         // console.log('Attaching event listeners...');
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        if (mobileMenuToggle && sidebar && sidebarOverlay) {
+            // Toggle mobile menu
+            mobileMenuToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                sidebar.classList.toggle('mobile-open');
+                sidebarOverlay.classList.toggle('active');
+                // Update icon
+                const icon = mobileMenuToggle.querySelector('i');
+                if (icon) {
+                    if (sidebar.classList.contains('mobile-open')) {
+                        icon.className = 'fa-solid fa-times';
+                    }
+                    else {
+                        icon.className = 'fa-solid fa-bars';
+                    }
+                }
+            });
+            // Close menu when clicking overlay
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                sidebarOverlay.classList.remove('active');
+                const icon = mobileMenuToggle.querySelector('i');
+                if (icon) {
+                    icon.className = 'fa-solid fa-bars';
+                }
+            });
+            // Close menu when clicking nav link (mobile)
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('mobile-open');
+                        sidebarOverlay.classList.remove('active');
+                        const icon = mobileMenuToggle.querySelector('i');
+                        if (icon) {
+                            icon.className = 'fa-solid fa-bars';
+                        }
+                    }
+                });
+            });
+            // Mobile Back Button
+            const mobileBackBtn = document.getElementById('mobile-back-btn');
+            if (mobileBackBtn) {
+                mobileBackBtn.addEventListener('click', () => {
+                    sidebar.classList.remove('mobile-open');
+                    sidebarOverlay.classList.remove('active');
+                    const icon = mobileMenuToggle.querySelector('i');
+                    if (icon) {
+                        icon.className = 'fa-solid fa-bars';
+                    }
+                });
+            }
+        }
         // Theme switcher
         (_a = document.getElementById('theme-toggle')) === null || _a === void 0 ? void 0 : _a.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -4415,4 +4488,3 @@ function initializeApp() {
         console.error('❌ Uygulama başlatma hatası:', error);
     }
 }
-
