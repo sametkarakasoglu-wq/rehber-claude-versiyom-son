@@ -208,6 +208,13 @@ let state = {
     isRentalEditModalOpen: false,
     isReservationEditModalOpen: false,
     isMaintenanceEditModalOpen: false,
+    // ✅ YENİ: Dosya yönetimi modal'ları
+    isDocumentUploadModalOpen: false,
+    isDocumentPreviewModalOpen: false,
+    isDocumentSelectorModalOpen: false,
+    selectedDocument: null, // Önizleme/düzenleme için seçilen dosya
+    documentSelectorCallback: null, // Dosya seçildiğinde çağrılacak callback
+    documentSelectorCategory: null, // Seçici modalda gösterilecek kategori filtresi
     editingVehicleIndex: null,
     editingReservationId: null,
     editingMaintenanceId: null,
@@ -281,6 +288,7 @@ function saveDataToLocalStorage() {
             reservationsData,
             maintenanceData,
             activitiesData,
+            documentsData, // ✅ YENİ: Dosyalar
             theme: state.theme,
             readNotifications: state.readNotifications,
             settings: state.settings,
@@ -308,6 +316,7 @@ const navItems = [
     { id: 'rentals', icon: 'fa-solid fa-file-contract', text: 'Kiralamalar' },
     { id: 'reservations', icon: 'fa-solid fa-calendar-days', text: 'Rezervasyonlar' },
     { id: 'maintenance', icon: 'fa-solid fa-screwdriver-wrench', text: 'Bakım' },
+    { id: 'documents', icon: 'fa-solid fa-folder-open', text: 'Dosyalar' }, // ✅ YENİ
     { id: 'reports', icon: 'fa-solid fa-file-pdf', text: 'Raporlar' },
     { id: 'notifications', icon: 'fa-solid fa-bell', text: 'Bildirimler' },
     { id: 'settings', icon: 'fa-solid fa-gear', text: 'Ayarlar' },
@@ -325,6 +334,30 @@ function logActivity(icon, message) {
     if (activitiesData.length > 10)
         activitiesData.pop(); // Keep the list size manageable
 }
+
+/**
+ * ========================================
+ * DOCUMENTS DATA - DOSYA YÖNETİMİ
+ * ========================================
+ */
+let documentsData = [
+    // Örnek veri yapısı:
+    // {
+    //     id: 1,
+    //     name: "34ABC123_sigorta_2024.pdf",
+    //     category: "Sigortalar", // Faturalar, Sigortalar, Muayeneler, Ruhsatlar, Diger
+    //     type: "pdf", // pdf, image
+    //     storageType: "firebase", // firebase veya local (Base64)
+    //     url: "https://storage.googleapis.com/.../file.pdf", // Firebase Storage URL
+    //     fileData: null, // Base64 data (sadece local storage için)
+    //     size: 1245678, // bytes
+    //     uploadDate: "2024-01-15T10:30:00",
+    //     linkedVehicles: ["34 ABC 123"], // Hangi araçlara bağlı (opsiyonel)
+    //     tags: ["2024", "kasko"], // Arama için (opsiyonel)
+    //     description: "2024 Kasko Poliçesi" // Açıklama (opsiyonel)
+    // }
+];
+
 let vehiclesData = [
     { plate: '34 ABC 123', brand: 'Ford Focus', km: '120,500', status: 'Müsait', insuranceDate: '2025-10-15', inspectionDate: '2025-08-01', insuranceFile: 'sigorta.pdf', inspectionFile: 'muayene.pdf', licenseFile: 'ruhsat.jpg', insuranceFileUrl: null, inspectionFileUrl: null, licenseFileUrl: null },
     { plate: '06 XYZ 789', brand: 'Renault Clio', km: '85,200', status: 'Kirada', insuranceDate: '2024-12-20', inspectionDate: '2025-01-10', insuranceFile: 'sigorta.pdf', inspectionFile: null, licenseFile: 'ruhsat.jpg', rentedBy: { name: 'Mehmet Öztürk', phone: '0544 567 89 01' }, insuranceFileUrl: null, inspectionFileUrl: null, licenseFileUrl: null, activeRentalId: 1 },
@@ -1346,6 +1379,132 @@ const RentalsPage = () => {
     </div>
     `;
 };
+
+/**
+ * ========================================
+ * DOSYALAR SAYFASI (DOCUMENTS PAGE)
+ * ========================================
+ */
+const DocumentsPage = () => {
+    const categories = ['Faturalar', 'Sigortalar', 'Muayeneler', 'Ruhsatlar', 'Diger'];
+    
+    // Kategori bazında dosya sayısı
+    const getCategoryCount = (category) => {
+        return documentsData.filter(doc => doc.category === category).length;
+    };
+    
+    // Toplam dosya sayısı ve boyutu
+    const totalDocs = documentsData.length;
+    const totalSize = documentsData.reduce((sum, doc) => sum + (doc.size || 0), 0);
+    const formatSize = (bytes) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    };
+    
+    // Dosya tipi ikonu
+    const getFileIcon = (type) => {
+        if (type === 'pdf') return 'fa-solid fa-file-pdf';
+        if (type === 'image') return 'fa-solid fa-file-image';
+        return 'fa-solid fa-file';
+    };
+    
+    // Tarih formatla
+    const formatDate = (date) => {
+        if (!date) return 'Bilinmiyor';
+        return new Date(date).toLocaleDateString('tr-TR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+    
+    // Kategori klasörü render
+    const renderCategoryFolder = (category) => {
+        const docs = documentsData.filter(doc => doc.category === category);
+        const count = docs.length;
+        
+        return `
+            <div class="document-category">
+                <div class="document-category-header" onclick="toggleDocumentCategory('${category}')">
+                    <div class="document-category-title">
+                        <i class="fa-solid fa-folder"></i>
+                        <span>${category}</span>
+                        <span class="document-category-count">(${count})</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down category-chevron"></i>
+                </div>
+                <div class="document-category-content" id="category-${category}">
+                    ${count === 0 ? `
+                        <p class="no-data-item">Bu kategoride henüz dosya yok.</p>
+                    ` : `
+                        <div class="documents-grid">
+                            ${docs.map(doc => `
+                                <div class="document-card" data-document-id="${doc.id}">
+                                    <div class="document-card-icon">
+                                        <i class="${getFileIcon(doc.type)}"></i>
+                                    </div>
+                                    <div class="document-card-info">
+                                        <h4 class="document-card-name" title="${doc.name}">${doc.name}</h4>
+                                        <p class="document-card-meta">
+                                            <span>${formatSize(doc.size)}</span>
+                                            <span>•</span>
+                                            <span>${formatDate(doc.uploadDate)}</span>
+                                        </p>
+                                        ${doc.linkedVehicles && doc.linkedVehicles.length > 0 ? `
+                                            <p class="document-card-linked">
+                                                <i class="fa-solid fa-car"></i>
+                                                ${doc.linkedVehicles.join(', ')}
+                                            </p>
+                                        ` : ''}
+                                    </div>
+                                    <div class="document-card-actions">
+                                        <button class="btn-icon" onclick="previewDocument(${doc.id})" title="Önizle">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon btn-icon-danger" onclick="deleteDocument(${doc.id})" title="Sil">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    };
+    
+    return `
+        <div class="page-header">
+            <div>
+                <h1><i class="fa-solid fa-folder-open"></i> Dosyalarım</h1>
+                <p>${totalDocs} dosya • ${formatSize(totalSize)}</p>
+            </div>
+            <button class="btn btn-primary" onclick="openDocumentUploadModal()">
+                <i class="fa-solid fa-plus"></i> Yeni Dosya Ekle
+            </button>
+        </div>
+        
+        <div class="documents-container">
+            ${categories.map(cat => renderCategoryFolder(cat)).join('')}
+        </div>
+        
+        ${totalDocs === 0 ? `
+            <div class="empty-state">
+                <i class="fa-solid fa-folder-open"></i>
+                <h3>Henüz dosya eklemediniz</h3>
+                <p>Faturalar, sigortalar, muayeneler ve diğer dökümanlarınızı buradan yönetebilirsiniz.</p>
+                <button class="btn btn-primary" onclick="openDocumentUploadModal()">
+                    <i class="fa-solid fa-plus"></i> İlk Dosyanızı Ekleyin
+                </button>
+            </div>
+        ` : ''}
+    `;
+};
+
 const ReportsPage = () => {
     const getCustomerName = (customerId) => {
         const customer = customersData.find(c => c.id === customerId);
@@ -1952,6 +2111,9 @@ const App = () => {
             break;
         case 'maintenance':
             pageContent = MaintenancePage();
+            break;
+        case 'documents':
+            pageContent = DocumentsPage(); // ✅ YENİ
             break;
         case 'reports':
             pageContent = ReportsPage();
@@ -4253,6 +4415,15 @@ function loadDataFromLocalStorage() {
                     }
                 }).filter(Boolean); // Bozuk veya null kayıtları temizle
             }
+            
+            // ✅ YENİ: Dosyaları yükle
+            if (appData.documentsData && Array.isArray(appData.documentsData)) {
+                documentsData = appData.documentsData.map(doc => ({
+                    ...doc,
+                    uploadDate: doc.uploadDate ? new Date(doc.uploadDate) : new Date()
+                }));
+            }
+            
             // State'e ait verileri yükle
             if (appData.theme)
                 state.theme = appData.theme;
@@ -4486,5 +4657,77 @@ function initializeApp() {
     }
     catch (error) {
         console.error('❌ Uygulama başlatma hatası:', error);
+    }
+}
+
+/**
+ * ========================================
+ * DOSYA YÖNETİMİ FONKSİYONLARI
+ * ========================================
+ */
+
+// Kategori açma/kapama
+function toggleDocumentCategory(category) {
+    const content = document.getElementById(`category-${category}`);
+    const header = content.previousElementSibling;
+    const chevron = header.querySelector('.category-chevron');
+    
+    if (content.style.maxHeight) {
+        content.style.maxHeight = null;
+        chevron.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+// Dosya yükleme modalını aç
+function openDocumentUploadModal() {
+    setState({ isDocumentUploadModalOpen: true });
+}
+
+// Dosya önizleme modalını aç
+function previewDocument(documentId) {
+    const document = documentsData.find(doc => doc.id === documentId);
+    if (document) {
+        setState({ 
+            isDocumentPreviewModalOpen: true,
+            selectedDocument: document
+        });
+    }
+}
+
+// Dosya sil
+function deleteDocument(documentId) {
+    if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) {
+        return;
+    }
+    
+    const docIndex = documentsData.findIndex(doc => doc.id === documentId);
+    if (docIndex !== -1) {
+        const doc = documentsData[docIndex];
+        
+        // Firebase Storage'dan sil (eğer Firebase'de ise)
+        if (doc.storageType === 'firebase' && doc.url) {
+            if (typeof deleteDocumentFromStorage === 'function') {
+                deleteDocumentFromStorage(doc.url)
+                    .then(() => {
+                        console.log('Dosya Firebase Storage silindi');
+                    })
+                    .catch(err => {
+                        console.error('Firebase Storage silme hatasi:', err);
+                    });
+            }
+        }
+        
+        // Array'den sil
+        documentsData.splice(docIndex, 1);
+        
+        // Kaydet ve render
+        saveDataToLocalStorage();
+        renderApp();
+        
+        showToast('Dosya silindi', 'success');
+        logActivity('fa-solid fa-trash', `Dosya silindi: ${doc.name}`);
     }
 }
