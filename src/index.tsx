@@ -2802,7 +2802,7 @@ function attachEventListeners() {
                         console.log("Harici format tespit edildi, veriler dönüştürülüyor...");
 
                         // 1. Müşterileri Kiralamalardan Çıkar
-                        let tempCustomersData = JSON.parse(JSON.stringify(customersData)); // Deep copy to avoid issues
+                        let tempCustomersData = structuredClone(customersData); // Deep copy with better performance
                         let nextCustomerId = Math.max(0, ...tempCustomersData.map(c => c.id)) + 1;
 
                         if (importedData.rentals && Array.isArray(importedData.rentals)) {

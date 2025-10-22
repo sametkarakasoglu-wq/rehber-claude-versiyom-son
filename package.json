@@ -47,6 +47,6 @@
       "allowToChangeInstallationDirectory": true,
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
-    "asar": false
+    "asar": true
   }
 }

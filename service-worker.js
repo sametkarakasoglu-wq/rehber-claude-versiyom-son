@@ -4,15 +4,14 @@
  * Provides offline functionality and caching strategy
  */
 
-const CACHE_NAME = 'filo-yonetim-v2-fixed';
+const CACHE_NAME = 'filo-yonetim-v2.3-fixed';
 const OFFLINE_URL = '/';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/index.js',
-  '/index.css',
+  // CDN assets - external resources
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css',
@@ -111,8 +110,8 @@ self.addEventListener('message', (event) => {
  */
 
 // Import Firebase scripts for service worker
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
 
 // Initialize Firebase in service worker
 try {
@@ -121,7 +120,7 @@ try {
     authDomain: "rehber-filo.firebaseapp.com",
     databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "rehber-filo",
-    storageBucket: "rehber-filo.appspot.com",
+    storageBucket: "rehber-filo.firebasestorage.app",
     messagingSenderId: "1022169726073",
     appId: "1:1022169726073:web:584648469dd7854248a8a8"
   });

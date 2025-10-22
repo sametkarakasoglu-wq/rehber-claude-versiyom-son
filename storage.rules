@@ -2,7 +2,9 @@ rules_version = "2";
 service firebase.storage {
   match /b/{bucket}/o {
     match /documents/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      // Geliştirme ortamı için geçici olarak açık erişim
+      // ÜRETİME GEÇİŞTE AUTH EKLENMELİ: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
