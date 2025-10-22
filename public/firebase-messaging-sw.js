@@ -1,4 +1,4 @@
-// Firebase Messaging Service Worker
+﻿// Firebase Messaging Service Worker
 // This file is required for Firebase Cloud Messaging (FCM) push notifications
 
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
@@ -10,7 +10,7 @@ const firebaseConfig = {
   authDomain: "rehber-filo.firebaseapp.com",
   databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "rehber-filo",
-  storageBucket: "rehber-filo.firebasestorage.app",
+  storageBucket: "rehber-filo.appspot.com",
   messagingSenderId: "1022169726073",
   appId: "1:1022169726073:web:584648469dd7854248a8a8"
 };

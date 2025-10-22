@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1529,7 +1529,7 @@ const DocumentUploadModal = () => {
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill" id="upload-progress-fill"></div>
                         </div>
-                        <p id="upload-progress-text">Yükleniyor... 0%</p>
+                        <p id="upload-progress-text">Yukleniyor... 0%</p>
                     </div>
                     
                     <div class="form-actions">
@@ -4906,65 +4906,9 @@ function generateRentalSummaryPDF(rental) {
             y += 5;
             doc.text(`Tel: ${state.settings.companyInfo.phone} | Web: www.rehberotomotiv.com`, pageWidth / 2, y, { align: 'center' });
         }
-        // Sözleşme numarası (sağ üst)
-        doc.setFillColor(245, 245, 245);
-        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'F');
-        doc.setDrawColor(224, 224, 224);
-        doc.roundedRect(200 - margin - 50, y, 50, 8, 4, 4, 'S');
-        doc.setFontSize(9);
-        doc.setTextColor(26, 35, 126);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`#${rental.id}`, 200 - margin - 25, y + 5.5, { align: 'center' });
-        y += 15;
-        // Logo (sol üstte)
-        if (state.settings.pdfSettings.showLogo && state.settings.companyInfo.logo) {
-            try {
-                const imgFormat = state.settings.companyInfo.logo.match(/^data:image\/(png|jpe?g);base64,/) ?
-                    (state.settings.companyInfo.logo.includes('png') ? 'PNG' : 'JPEG') : 'PNG';
-                doc.addImage(state.settings.companyInfo.logo, imgFormat, margin, y, 50, 30);
-            }
-            catch (e) {
-                console.error("Logo eklenemedi:", e);
-            }
-        }
-        y += 35;
-        // ESKİ KOD SİLİNDİ - YENİ TASARIM YUKARI
-        const startY = y;
-        // Card arka plan
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'F'); // Yükseklik sonra ayarlanacak
-        doc.setDrawColor(224, 224, 224);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(margin, y, contentWidth, 0, 4, 4, 'S');
-        // Üst mavi çizgi
-        doc.setDrawColor(26, 35, 126);
-        doc.setLineWidth(1);
-        doc.line(margin, y, margin + contentWidth, y);
-        y += 8;
-        // Card başlığı
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(26, 35, 126);
-        doc.text(`${icon} ${title}`, margin + 5, y);
-        y += 8;
-        // İçerik
-        content();
-        const cardHeight = y - startY + 3;
-        // Card'ı tamamla (yükseklik düzeltmesi)
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'F');
-        doc.setDrawColor(224, 224, 224);
-        doc.roundedRect(margin, startY, contentWidth, cardHeight, 4, 4, 'S');
-        doc.setDrawColor(26, 35, 126);
-        doc.setLineWidth(1);
-        doc.line(margin, startY, margin + contentWidth, startY);
-        y += 5;
-    }
-    finally // ARAÇ BİLGİLERİ CARD
-     { }
-    ;
+
     // ARAÇ BİLGİLERİ CARD
-    drawCard('ARAÇ BİLGİLERİ', '🚗', () => {
+    drawCard('ARAÇ BİLGİLERİ', '🚗', primaryBlue, 60, () => {
         var _a, _b;
         const col1X = margin + 8;
         const col2X = margin + contentWidth / 2 + 4;
@@ -5014,7 +4958,7 @@ function generateRentalSummaryPDF(rental) {
         y += 3;
     });
     // KİRALAYAN BİLGİLERİ CARD
-    drawCard('KİRALAYAN BİLGİLERİ', '👤', () => {
+    drawCard('KİRALAYAN BİLGİLERİ', '👤', successGreen, 60, () => {
         const col1X = margin + 8;
         const col2X = margin + contentWidth / 2 + 4;
         const labelSize = 9;
@@ -5061,7 +5005,7 @@ function generateRentalSummaryPDF(rental) {
         y += 3;
     });
     // KİRALAMA BİLGİLERİ CARD
-    drawCard('KİRALAMA BİLGİLERİ', '📋', () => {
+    drawCard('KİRALAMA BİLGİLERİ', '📋', accentOrange, 95, () => {
         // Durum badge
         doc.setFillColor(245, 245, 245);
         doc.roundedRect(margin + contentWidth - 35, y - 5, 30, 6, 3, 3, 'F');
@@ -5174,7 +5118,7 @@ function generateRentalSummaryPDF(rental) {
         y += 18;
     });
     // FİYATLANDIRMA CARD
-    drawCard('FİYATLANDIRMA', '💰', () => {
+    drawCard('FİYATLANDIRMA', '💰', darkBlue, 70, () => {
         const labelX = margin + 8;
         const valueX = margin + contentWidth - 8;
         // Tablo satırları
@@ -5223,12 +5167,17 @@ function generateRentalSummaryPDF(rental) {
         y += 4;
         doc.text(`${state.settings.companyInfo.address} | ${state.settings.companyInfo.phone}`, 100, y, { align: 'center' });
     }
-    doc.output('dataurlnewwindow');
-}
-try { }
-catch (error) {
-    console.error("PDF oluşturma sırasında kritik bir hata oluştu:", error);
+
+    // PDF'i indir
+    const filename = `Kiralama_Ozeti_${rental.id}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    showToast('PDF başarıyla oluşturuldu!', 'success');
+    console.log('✅ PDF oluşturuldu:', filename);
+
+} catch (error) {
+    console.error("❌ PDF oluşturma sırasında kritik bir hata oluştu:", error);
     showToast("PDF oluşturulamadı. Lütfen konsolu kontrol edin.", "error");
+}
 }
 /**
  * Ekranda geçici bir bildirim (toast) gösterir.
@@ -5863,6 +5812,7 @@ async function handleFolderUpload(fileList, category, tags) {
     const totalFiles = files.length;
     let uploadedFiles = 0;
     let skippedFiles = 0;
+    const tagList = Array.isArray(tags) ? tags : parseTagsInput(tags);
     
     try {
         // Progress bar göster
@@ -5917,8 +5867,9 @@ async function handleFolderUpload(fileList, category, tags) {
                                 file.type.includes('image') ? 'image' : 'other';
                 
                 let fileUrl = '';
-                let storageType = 'firebaseStorage';
+                let storageType = 'firebase';
                 let base64Data = null;
+                const documentId = Date.now() + i;
                 
                 // Firebase Storage'a yükle
                 try {
@@ -5929,8 +5880,13 @@ async function handleFolderUpload(fileList, category, tags) {
                         };
                         
                         // Firebase Storage'a yükle
-                        fileUrl = await uploadFileToStorage(file, autoCategory, progressCallback);
-                        console.log(`✅ Firebase Storage URL: ${fileUrl}`);
+                        fileUrl = await uploadFileToStorage(file, autoCategory, progressCallback, {
+                            docId: documentId,
+                            tags: tagList,
+                            linkedVehicles: []
+                        });
+                        console.log(`[upload] Firebase Storage URL: ${fileUrl}`);
+                        storageType = 'firebase';
                     } else {
                         throw new Error('uploadFileToStorage fonksiyonu bulunamadı');
                     }
@@ -5953,17 +5909,18 @@ async function handleFolderUpload(fileList, category, tags) {
                 
                 // Document objesi oluştur
                 const newDocument = {
-                    id: Date.now() + i, // Unique ID
+                    id: documentId, // Unique ID
                     name: file.name,
                     category: autoCategory,
                     type: fileType,
                     storageType: storageType,
+                    storagePath: storageType === 'firebase' ? extractStoragePathFromUrl(fileUrl) : null,
                     url: fileUrl,
                     fileData: base64Data, // Firebase'de null, localStorage'da Base64
                     size: file.size,
                     uploadDate: new Date(),
                     linkedVehicles: [],
-                    tags: tags ? tags.split(',').map(t => t.trim()) : []
+                    tags: tagList
                 };
                 
                 // Array'e ekle
@@ -5980,7 +5937,7 @@ async function handleFolderUpload(fileList, category, tags) {
             // Progress güncelle
             const progress = Math.round(((i + 1) / totalFiles) * 100);
             if (progressFill) progressFill.style.width = progress + '%';
-            if (progressText) progressText.textContent = `Yükleniyor... ${i + 1}/${totalFiles} (${progress}%)`;
+            if (progressText) progressText.textContent = `Yukleniyor... ${i + 1}/${totalFiles} (${progress}%)`;
             
             // Her 5 dosyada bir kısa bekleme (UI donmaması için)
             if (i % 5 === 0) {
@@ -6049,6 +6006,33 @@ function formatFileSize(bytes) {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
+function extractStoragePathFromUrl(url) {
+    if (!url) return null;
+    try {
+        const decoded = decodeURIComponent(url);
+        const match = decoded.match(/\/o\/(.*?)(?:\?|$)/);
+        if (match && match[1]) {
+            return match[1];
+        }
+    } catch (error) {
+        console.warn('Storage URL parse edilemedi:', error);
+    }
+    return null;
+}
+
+function parseTagsInput(rawTags) {
+    if (!rawTags) return [];
+    if (Array.isArray(rawTags)) {
+        return rawTags
+            .map(tag => String(tag).trim())
+            .filter(tag => tag.length > 0);
+    }
+    return String(rawTags)
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+}
+
 // Dosya sil
 async function deleteDocument(documentId) {
     if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) {
@@ -6094,7 +6078,7 @@ async function handleDocumentUpload(e) {
     const category = formData.get('category');
     const file = formData.get('file');
     const folder = form.querySelector('#doc-folder');
-    const tags = formData.get('tags');
+    const tags = parseTagsInput(formData.get('tags'));
     
     // Klasör mü yoksa tek dosya mı?
     const isFolder = folder && folder.files && folder.files.length > 0;
@@ -6135,63 +6119,54 @@ async function handleDocumentUpload(e) {
         if (uploadBtn) uploadBtn.disabled = true;
         
         // Dosya tipini belirle
-        const fileType = file.type.includes('pdf') ? 'pdf' : 
+        const fileType = file.type.includes('pdf') ? 'pdf' :
                         file.type.includes('image') ? 'image' : 'other';
-        
+
+        // Unique ID oluştur
+        const documentId = 'DOC-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+
         let fileUrl = '';
-        let storageType = 'firebaseStorage';
+        let storageType = 'firebase';
         let fileData = null;
         
-        // Firebase Storage'a yükle
+        // 🚀 OPTIMIZE: Sadece Firebase Storage kullan (localStorage fallback kaldırıldı)
         try {
             if (typeof uploadFileToStorage === 'function') {
                 fileUrl = await uploadFileToStorage(file, category, (progress) => {
                     // Progress callback
                     if (progressFill) progressFill.style.width = progress + '%';
-                    if (progressText) progressText.textContent = `Yükleniyor... ${progress}%`;
+                    if (progressText) progressText.textContent = `Yukleniyor... ${progress}%`;
                 });
                 console.log('✅ Firebase Storage URL:', fileUrl);
+                storageType = 'firebaseStorage'; // Doğru storageType
             } else {
-                throw new Error('uploadFileToStorage fonksiyonu bulunamadı');
+                throw new Error('uploadFileToStorage fonksiyonu bulunamadı! Firebase ayarlarını kontrol edin.');
             }
         } catch (uploadError) {
-            console.warn('⚠️ Firebase Storage yüklenemedi, Base64 kullanılıyor:', uploadError);
-            
-            // Fallback: Base64 encoding
-            const reader = new FileReader();
-            fileData = await new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-            
-            // Blob URL oluştur
-            const blob = new Blob([file], { type: file.type });
-            fileUrl = URL.createObjectURL(blob);
-            storageType = 'localStorage';
-            console.log('🔗 LocalStorage için Blob URL oluşturuldu:', fileUrl);
-            
-            // Progress animasyonu (fake)
-            for (let i = 0; i <= 100; i += 20) {
-                if (progressFill) progressFill.style.width = i + '%';
-                if (progressText) progressText.textContent = `Yükleniyor... ${i}%`;
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
+            // ❌ Firebase başarısız - localStorage kullanma (quota hatası önlenir)
+            console.error('❌ Firebase Storage yükleme başarısız:', uploadError);
+            showToast('Dosya yüklenemedi! Firebase Storage yapılandırmasını kontrol edin.', 'error');
+
+            // Progress bar ve button'ı geri al
+            if (progressContainer) progressContainer.style.display = 'none';
+            if (uploadBtn) uploadBtn.disabled = false;
+            return; // Yüklemeyi iptal et
         }
         
-        // Yeni document objesi oluştur
+        // Yeni document objesi oluştur (🚀 OPTIMIZE: fileData ekleme - sadece metadata)
         const newDocument = {
-            id: Date.now(),
+            id: documentId,
             name: file.name,
             category: category,
             type: fileType,
             storageType: storageType,
-            url: fileUrl, // 🔥 Artık her zaman dolu olacak
-            fileData: fileData,
+            storagePath: storageType === 'firebaseStorage' ? `documents/${category}/${file.name}` : null,
+            url: fileUrl, // URL her zaman dolu
+            // ❌ fileData ekleme - localStorage quota sorununa neden olur!
             size: file.size,
             uploadDate: new Date(),
             linkedVehicles: [],
-            tags: tags ? tags.split(',').map(t => t.trim()) : []
+            tags: tags
         };
         
         // Array'e ekle

@@ -140,62 +140,115 @@ async function fetchDataFromFirebase() {
     throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
   }
 
+  let data = null;
+
   try {
-    const snapshot = await firebaseDatabase.ref().once('value');
-    const data = snapshot.val();
+    console.log('🔄 Firebase snapshot çekiliyor (WebSocket)...');
+
+    // 🚀 Timeout ekle (5 saniye - kısa tutalım)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('WebSocket timeout')), 5000)
+    );
+
+    const snapshotPromise = firebaseDatabase.ref().once('value');
+
+    const snapshot = await Promise.race([snapshotPromise, timeoutPromise]);
+
+    console.log('✅ WebSocket snapshot alındı!');
+    data = snapshot.val();
+
+  } catch (wsError) {
+    // 🔥 FALLBACK: REST API kullan (WebSocket başarısız olursa)
+    console.warn('⚠️ WebSocket başarısız, REST API deneniyor:', wsError.message);
+
+    try {
+      const databaseURL = defaultFirebaseConfig.databaseURL;
+      const restUrl = `${databaseURL}/.json`;
+
+      console.log('🌐 REST API ile veri çekiliyor:', restUrl);
+
+      const response = await fetch(restUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      data = await response.json();
+      console.log('✅ REST API ile veri alındı!');
+
+    } catch (restError) {
+      console.error('❌ REST API de başarısız:', restError.message);
+      throw new Error(`Firebase bağlantı hatası: ${restError.message}`);
+    }
+  }
+
+  try {
 
     if (!data) {
       throw new Error('Firebase\'de veri bulunamadı!');
     }
 
-    // Process activities to convert date strings to Date objects
-    let processedActivities = data.activities || [];
-    if (Array.isArray(processedActivities)) {
-      processedActivities = processedActivities.map(activity => {
-        if (!activity) return null;
-        
-        try {
-          let parsedDate = new Date();
-          
-          // Try to parse date from activity.date or activity.time
-          if (activity.date) {
-            const attemptedDate = new Date(activity.date);
-            if (!isNaN(attemptedDate.getTime())) {
-              parsedDate = attemptedDate;
-            }
-          } else if (activity.time) {
-            const attemptedDate = new Date(activity.time);
-            if (!isNaN(attemptedDate.getTime())) {
-              parsedDate = attemptedDate;
-            }
-          }
+    // 🚀 Helper: Object'i Array'e çevir (Firebase'den Object gelirse)
+    const toArray = (obj) => {
+      if (!obj) return [];
+      if (Array.isArray(obj)) return obj;
+      return Object.values(obj).filter(Boolean); // null/undefined'ları filtrele
+    };
 
-          return {
-            icon: activity.icon || 'fa-solid fa-circle-info',
-            message: activity.message || 'Bilinmeyen aktivite',
-            time: parsedDate,
-            date: parsedDate
-          };
-        } catch (e) {
-          console.error('Activity date parse error:', e, activity);
-          return null;
+    // Process activities to convert date strings to Date objects
+    let processedActivities = toArray(data.activities);
+    processedActivities = processedActivities.map(activity => {
+      if (!activity) return null;
+
+      try {
+        let parsedDate = new Date();
+
+        // Try to parse date from activity.date or activity.time
+        if (activity.date) {
+          const attemptedDate = new Date(activity.date);
+          if (!isNaN(attemptedDate.getTime())) {
+            parsedDate = attemptedDate;
+          }
+        } else if (activity.time) {
+          const attemptedDate = new Date(activity.time);
+          if (!isNaN(attemptedDate.getTime())) {
+            parsedDate = attemptedDate;
+          }
         }
-      }).filter(activity => activity !== null);
-    }
+
+        return {
+          icon: activity.icon || 'fa-solid fa-circle-info',
+          message: activity.message || 'Bilinmeyen aktivite',
+          time: parsedDate,
+          date: parsedDate
+        };
+      } catch (e) {
+        console.error('Activity date parse error:', e, activity);
+        return null;
+      }
+    }).filter(activity => activity !== null);
+
+    // 🚀 Documents - basit toArray kullan
+    const documents = toArray(data.documents || data.documentsData);
 
     const result = {
-      vehiclesData: data.vehicles || [],
-      customersData: data.customers || [],
-      rentalsData: data.rentals || [],
-      reservationsData: data.reservations || [],
-      maintenanceData: data.maintenance || [],
+      vehiclesData: toArray(data.vehicles), // 🚀 Object to Array
+      customersData: toArray(data.customers), // 🚀 Object to Array
+      rentalsData: toArray(data.rentals), // 🚀 Object to Array
+      reservationsData: toArray(data.reservations), // 🚀 Object to Array
+      maintenanceData: toArray(data.maintenance), // 🚀 Object to Array
       activitiesData: processedActivities,
-      documentsData: data.documents || [], // ✅ Dosyaları da ekle
+      documentsData: documents, // 🚀 Object to Array
       settings: data.settings || {},
       lastUpdate: data.lastUpdate || null
     };
 
-    console.log('✅ Veriler Firebase\'den alındı! (Activities:', processedActivities.length, 'Documents:', (data.documents || []).length, ')');
+    console.log('✅ Veriler Firebase\'den alındı! (Araç:', result.vehiclesData.length, ', Müşteri:', result.customersData.length, ', Kiralama:', result.rentalsData.length, ')');
     return result;
   } catch (error) {
     console.error('❌ Firebase\'den veri çekme hatası:', error);
@@ -668,4 +721,13 @@ async function deleteFileFromStorage(fileUrl) {
         }
         throw error;
     }
+}
+
+// ============================================
+// GLOBAL EXPORTS (window object)
+// ============================================
+if (typeof window !== 'undefined') {
+    window.uploadFileToStorage = uploadFileToStorage;
+    window.deleteFileFromStorage = deleteFileFromStorage;
+    console.log('✅ Firebase Storage fonksiyonları window\'a export edildi');
 }

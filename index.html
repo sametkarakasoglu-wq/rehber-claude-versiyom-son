@@ -1,121 +1,108 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <!-- Temel Meta Etiketleri -->
     <meta charset="UTF-8">
-    <!-- İçerik Güvenlik Politikası (CSP) - ELECTRON İÇİN DEVRE DIŞI -->
-    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-inline' file: https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.abacus.ai https://storage.googleapis.com https://*.googleusercontent.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.google.com https://firestore.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;"> -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file: https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.abacus.ai https://storage.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com; connect-src 'self' ws://localhost:4001 ws://localhost:4002 ws://localhost:4003 ws://127.0.0.1:4001 wss://*.firebaseio.com https://*.firebaseio.com https://*.googleapis.com https://*.google.com https://firestore.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://*.firebasedatabase.app; frame-src 'self' blob: data: https://firebasestorage.googleapis.com https://storage.googleapis.com; object-src 'self' blob: data:;">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
-    <meta name="description" content="Araç filonuzu verimli bir şekilde yönetmek için profesyonel takip ve yönetim sistemi.">
+    <meta name="description" content="Arac filonuzu verimli bicimde yonetmek icin profesyonel takip ve kontrol sistemi.">
     <meta name="theme-color" content="#1e40af">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Filo Yönetimi">
-    
-    <!-- Sayfa Başlığı -->
-    <title>Araç Filo Yönetimi – Profesyonel Takip Sistemi</title>
+    <meta name="apple-mobile-web-app-title" content="Filo Yonetimi">
 
-    <!-- PWA Manifest -->
+    <title>Arac Filo Yonetimi - Profesyonel Takip Sistemi</title>
+
     <link rel="manifest" href="/manifest.json">
-    
-    <!-- Apple Touch Icons -->
+
     <link rel="apple-touch-icon" sizes="192x192" href="https://cdn.abacus.ai/images/98478289-d99e-4e91-acd0-ddc5a7d08b12.png">
     <link rel="apple-touch-icon" sizes="512x512" href="https://cdn.abacus.ai/images/fb9cc27f-05ca-4c0e-a706-51f5b8e89fd4.png">
-    
-    <!-- Favicon -->
+
     <link rel="icon" type="image/png" sizes="192x192" href="https://cdn.abacus.ai/images/98478289-d99e-4e91-acd0-ddc5a7d08b12.png">
     <link rel="icon" type="image/png" sizes="512x512" href="https://cdn.abacus.ai/images/fb9cc27f-05ca-4c0e-a706-51f5b8e89fd4.png">
 
-    <!-- Harici Kütüphaneler ve Stiller -->
-    <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Font Awesome (İkonlar için) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    
-    <!-- Ana Stil Dosyası -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
     <link rel="stylesheet" href="src/assets/styles/index.css">
-    
-    <!-- Toastify CSS for Toast Notifications -->
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 </head>
 <body>
-    <!-- 
-        Uygulama başlığı, formlar ve listeler gibi dinamik içerikler 
-        JavaScript tarafından bu 'root' elementi içine çizilir.
-        <header>
-            <img src="/path/to/logo.png" alt="" aria-label="Şirket Logosu">
-        </header>
+    <!--
+        Dinamik uygulama arayuzu (formlar, listeler vb.) bu 'root' elemanina render edilir.
     -->
     <div id="root"></div>
 
-    <!-- Sayfa Alt Bilgisi (Footer) -->
     <footer class="app-footer">
-        © 2025 | Tüm hakları saklıdır.
+        &copy; 2025 | Tum haklar saklidir.
     </footer>
 
-    <!-- Gerekli JavaScript Kütüphaneleri -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    
-    <!-- Firebase SDK (v9 compat mode) -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
-    
-    <!-- Firebase Configuration (must load BEFORE main app) -->
-    <script src="/firebase-config.js"></script>
-    
-    <!-- ELECTRON TEST SCRIPT -->
+
+    <script src="/src/config/firebase-config.js"></script>
+
     <script>
-        console.log('🔍 index.html yüklendi');
-        console.log('🌍 window.location:', window.location.href);
-        console.log('📦 Firebase var mı:', typeof firebase !== 'undefined');
-        
-        // DOMContentLoaded event
+        console.log('[index.html] loaded');
+        console.log('[index.html] window.location:', window.location.href);
+        console.log('[index.html] firebase defined:', typeof firebase !== 'undefined');
+
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('✅ DOMContentLoaded event tetiklendi');
-            console.log('📄 #root elementi:', document.getElementById('root'));
+            console.log('[index.html] DOMContentLoaded fired');
+            console.log('[index.html] root element:', document.getElementById('root'));
         });
-        
-        // Window load event
+
         window.addEventListener('load', () => {
-            console.log('✅ Window load event tetiklendi');
+            console.log('[index.html] load event fired');
         });
-        
-        // Error handling
-        window.addEventListener('error', (e) => {
-            console.error('❌ Global hata:', e.message, e.filename, e.lineno, e.colno);
+
+        window.addEventListener('error', (event) => {
+            console.error('[index.html] uncaught error:', event.message, event.filename, event.lineno, event.colno);
         });
-        
-        window.addEventListener('unhandledrejection', (e) => {
-            console.error('❌ Unhandled Promise Rejection:', e.reason);
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('[index.html] unhandled promise rejection:', event.reason);
         });
     </script>
-    
-    <!-- Main App - MODULE (Vite handles this) -->  
+
     <script type="module" src="/src/index.js"></script>
-    
-    <!-- Service Worker Registration - COMPLETELY DISABLED FOR DEVELOPMENT -->
+
     <script>
-        // Service Worker DISABLED - No cache issues during development
-        if (false && 'serviceWorker' in navigator && window.location.hostname !== 'localhost') {
+        const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        const isSecureOrigin = window.location.protocol === 'https:';
+        const isFileProtocol = window.location.protocol === 'file:';
+
+        if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                if (!isSecureOrigin) {
+                    console.log('[SW] registration skipped (HTTPS required).');
+                    return;
+                }
+                if (isLocalhost || isFileProtocol) {
+                    console.log('[SW] registration skipped for development environment.');
+                    return;
+                }
+
                 navigator.serviceWorker.register('/service-worker.js')
                     .then((registration) => {
-                        console.log('✅ Service Worker kayıtlı:', registration.scope);
-                        
-                        // Check for updates
+                        console.log('[SW] registered:', registration.scope);
                         registration.addEventListener('updatefound', () => {
                             const newWorker = registration.installing;
+                            if (!newWorker) {
+                                return;
+                            }
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New service worker available
-                                    if (confirm('Yeni bir güncelleme mevcut! Sayfayı yenilemek ister misiniz?')) {
+                                    const shouldReload = window.confirm('Yeni bir guncelleme var. Sayfayi yenilemek ister misiniz?');
+                                    if (shouldReload) {
                                         newWorker.postMessage({ type: 'SKIP_WAITING' });
                                         window.location.reload();
                                     }
@@ -124,35 +111,32 @@
                         });
                     })
                     .catch((error) => {
-                        console.error('❌ Service Worker kayıt hatası:', error);
+                        console.error('[SW] registration error:', error);
                     });
             });
+        } else {
+            console.log('[SW] not supported in this browser.');
         }
 
-        // PWA Install Prompt
         let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            console.log('💾 PWA kurulum prompt\'u hazır');
-            
-            // Store the event for later use
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredPrompt = event;
+            console.log('[PWA] install prompt captured');
             window.pwaInstallPrompt = deferredPrompt;
         });
 
-        // Track PWA installation
         window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA kuruldu!');
+            console.log('[PWA] app installed');
             deferredPrompt = null;
             if (typeof showToast === 'function') {
-                showToast('Uygulama başarıyla kuruldu! 🎉', 'success');
+                showToast('Uygulama kuruldu.', 'success');
             }
         });
 
-        // Detect if running as PWA
         window.addEventListener('load', () => {
             if (window.matchMedia('(display-mode: standalone)').matches) {
-                console.log('📱 PWA modunda çalışıyor');
+                console.log('[PWA] running in standalone mode');
             }
         });
     </script>

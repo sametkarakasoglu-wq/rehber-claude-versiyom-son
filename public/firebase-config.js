@@ -23,8 +23,258 @@ const defaultFirebaseConfig = {
 };
 
 // VAPID Key for FCM (Firebase Cloud Messaging)
-// Bu key Firebase Console > Project Settings > Cloud Messaging'den alındı ✅
+// Bu key Firebase Console > Project Settings > Cloud Messaging'den alÄ±ndÄ± âœ…
 const vapidKey = "BHhfwLs8mhkQPT5ecNAyL8q1zfixUYpqBlyLp2HJvioV2uPWhj53F52TH1vjz4lP6G8uESkg6WyXYfNnYHAMu0U";
+
+function hashStringToNumber(str) {
+  if (!str) {
+    return Date.now();
+  }
+
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  }
+
+  hash = Math.abs(hash);
+  return hash === 0 ? Date.now() : hash;
+}
+
+function extractStoragePathFromUrl(url) {
+  try {
+    if (!url) {
+      return null;
+    }
+
+    const decoded = decodeURIComponent(url);
+    const match = decoded.match(/\/o\/(.*?)(?:\?|$)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+  } catch (error) {
+    console.warn('Storage URL parse error:', error);
+  }
+  return null;
+}
+
+async function listAllFilesRecursively(storageRef) {
+  const result = await storageRef.listAll();
+  let items = [].concat(result.items);
+
+  for (let i = 0; i < result.prefixes.length; i++) {
+    const subItems = await listAllFilesRecursively(result.prefixes[i]);
+    items = items.concat(subItems);
+  }
+
+  return items;
+}
+
+async function fetchDocumentsFromStorage() {
+  if (!firebaseStorage) {
+    console.warn('Firebase Storage henÃ¼z baÅŸlatÄ±lmadÄ±, storage dokÃ¼manlarÄ± getirilemiyor.');
+    return [];
+  }
+
+  try {
+    const rootRef = firebaseStorage.ref('documents');
+    const fileRefs = await listAllFilesRecursively(rootRef);
+
+    const documents = await Promise.all(fileRefs.map(async (fileRef) => {
+      try {
+        const metadataPromise = fileRef.getMetadata();
+        const downloadUrlPromise = fileRef.getDownloadURL();
+        const metadata = await metadataPromise;
+        const downloadURL = await downloadUrlPromise;
+
+        const storagePath = metadata.fullPath || fileRef.fullPath || null;
+        const category = storagePath
+          ? storagePath.replace(/^documents\//, '').split('/')[0] || 'Diger'
+          : 'Diger';
+
+        let tags = [];
+        let linkedVehicles = [];
+        let customDocId = null;
+        if (metadata.customMetadata) {
+          if (metadata.customMetadata.tags) {
+            tags = metadata.customMetadata.tags.split(',').map(function (tag) {
+              return tag.trim();
+            }).filter(function (tag) { return tag.length > 0; });
+          }
+          if (metadata.customMetadata.linkedVehicles) {
+            linkedVehicles = metadata.customMetadata.linkedVehicles.split(',').map(function (vehicle) {
+              return vehicle.trim();
+            }).filter(function (vehicle) { return vehicle.length > 0; });
+          }
+          if (metadata.customMetadata.docId) {
+            const parsed = parseInt(metadata.customMetadata.docId, 10);
+            if (!isNaN(parsed)) {
+              customDocId = parsed;
+            }
+          }
+        }
+
+        const documentId = customDocId !== null
+          ? customDocId
+          : hashStringToNumber(storagePath || metadata.name || downloadURL);
+
+        return {
+          id: documentId,
+          name: metadata.name || fileRef.name,
+          category: category,
+          type: metadata.contentType || 'application/octet-stream',
+          storageType: 'firebase',
+          storagePath: storagePath,
+          url: downloadURL,
+          fileData: null,
+          size: typeof metadata.size === 'number' ? metadata.size : null,
+          uploadDate: metadata.timeCreated || metadata.updated || new Date().toISOString(),
+          linkedVehicles: linkedVehicles,
+          tags: tags
+        };
+      } catch (error) {
+        console.warn('Storage dokÃ¼manÄ± okunamadÄ±:', fileRef.fullPath, error);
+        return null;
+      }
+    }));
+
+    return normalizeDocumentsForClient(documents.filter(function (doc) { return doc !== null; }));
+  } catch (error) {
+    console.warn('Firebase Storage dokÃ¼manlarÄ± listelenirken hata oluÅŸtu:', error);
+    return [];
+  }
+}
+
+function mergeDocumentLists(existingDocs, storageDocs) {
+  const map = new Map();
+
+  function upsert(doc) {
+    if (!doc) {
+      return;
+    }
+
+    const normalized = Object.assign({}, doc);
+
+    if (!normalized.storagePath && normalized.url) {
+      const inferredPath = extractStoragePathFromUrl(normalized.url);
+      if (inferredPath) {
+        normalized.storagePath = inferredPath;
+      }
+    }
+
+    if (typeof normalized.id !== 'number' || isNaN(normalized.id)) {
+      const keySource = normalized.storagePath || normalized.url || normalized.name || String(Date.now());
+      normalized.id = hashStringToNumber(String(keySource));
+    }
+
+    if (!normalized.storageType) {
+      normalized.storageType = 'firebase';
+    }
+
+    const key = normalized.storagePath || normalized.id;
+    const previous = map.get(key) || {};
+    map.set(key, Object.assign({}, previous, normalized));
+  }
+
+  if (Array.isArray(existingDocs)) {
+    existingDocs.forEach(upsert);
+  }
+
+  if (Array.isArray(storageDocs)) {
+    storageDocs.forEach(upsert);
+  }
+
+  return Array.from(map.values());
+}
+
+function normalizeStringArray(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(function (item) { return String(item).trim(); })
+      .filter(function (item) { return item.length > 0; });
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(function (item) { return item.trim(); })
+      .filter(function (item) { return item.length > 0; });
+  }
+
+  return [];
+}
+
+function normalizeDocumentsForClient(documents) {
+  if (!Array.isArray(documents)) {
+    return [];
+  }
+
+  return documents
+    .map(function (doc) {
+      if (!doc) {
+        return null;
+      }
+
+      const normalized = Object.assign({}, doc);
+
+      normalized.storageType = normalized.storageType || 'firebase';
+
+      if (!normalized.url && normalized.downloadURL) {
+        normalized.url = normalized.downloadURL;
+      }
+
+      if (!normalized.storagePath && normalized.url) {
+        const inferredPath = extractStoragePathFromUrl(normalized.url);
+        if (inferredPath) {
+          normalized.storagePath = inferredPath;
+        }
+      }
+
+      const uploadDateValue = normalized.uploadDate || normalized.timeCreated || normalized.updated || new Date().toISOString();
+      const parsedUploadDate = new Date(uploadDateValue);
+      normalized.uploadDate = isNaN(parsedUploadDate.getTime())
+        ? new Date().toISOString()
+        : parsedUploadDate.toISOString();
+
+      normalized.tags = normalizeStringArray(normalized.tags);
+      normalized.linkedVehicles = normalizeStringArray(normalized.linkedVehicles);
+
+      if (normalized.storageType === 'firebase') {
+        normalized.fileData = null;
+      }
+
+      if (typeof normalized.size !== 'number') {
+        normalized.size = null;
+      }
+
+      if (typeof normalized.id !== 'number' || isNaN(normalized.id)) {
+        const key = normalized.storagePath || normalized.url || normalized.name || '';
+        normalized.id = hashStringToNumber(String(key));
+      }
+
+      return normalized;
+    })
+    .filter(function (doc) { return doc !== null; });
+}
+
+function sanitizeDocumentsForFirebase(documents) {
+  return normalizeDocumentsForClient(documents).map(function (doc) {
+    const sanitized = Object.assign({}, doc);
+    const uploadDate = new Date(sanitized.uploadDate);
+    sanitized.uploadDate = isNaN(uploadDate.getTime()) ? new Date().toISOString() : uploadDate.toISOString();
+    sanitized.tags = normalizeStringArray(sanitized.tags);
+    sanitized.linkedVehicles = normalizeStringArray(sanitized.linkedVehicles);
+    sanitized.storageType = sanitized.storageType || 'firebase';
+    sanitized.storagePath = sanitized.storagePath || (sanitized.url ? extractStoragePathFromUrl(sanitized.url) : null);
+    if (sanitized.storageType === 'firebase') {
+      sanitized.fileData = null;
+    }
+    return sanitized;
+  });
+}
 
 /**
  * Initialize Firebase with user configuration
@@ -35,7 +285,7 @@ function initializeFirebase(config = null) {
     const finalConfig = config || defaultFirebaseConfig;
     
     if (!finalConfig || !finalConfig.apiKey || !finalConfig.databaseURL) {
-      throw new Error('Firebase konfigürasyonu eksik!');
+      throw new Error('Firebase konfigÃ¼rasyonu eksik!');
     }
 
     // Initialize Firebase
@@ -46,31 +296,31 @@ function initializeFirebase(config = null) {
       // Initialize Firebase Storage
       try {
         firebaseStorage = firebase.storage();
-        console.log('✅ Firebase Storage başlatıldı!');
+        console.log('âœ… Firebase Storage baÅŸlatÄ±ldÄ±!');
       } catch (storageError) {
-        console.warn('⚠️ Firebase Storage başlatılamadı:', storageError.message);
+        console.warn('âš ï¸ Firebase Storage baÅŸlatÄ±lamadÄ±:', storageError.message);
       }
       
       // Initialize Firebase Cloud Messaging
       try {
         if (firebase.messaging.isSupported()) {
           firebaseMessaging = firebase.messaging();
-          console.log('✅ Firebase Cloud Messaging başlatıldı!');
+          console.log('âœ… Firebase Cloud Messaging baÅŸlatÄ±ldÄ±!');
         } else {
-          console.warn('⚠️ Bu tarayıcı FCM desteklemiyor (HTTP üzerinde çalışıyor olabilir)');
+          console.warn('âš ï¸ Bu tarayÄ±cÄ± FCM desteklemiyor (HTTP Ã¼zerinde Ã§alÄ±ÅŸÄ±yor olabilir)');
         }
       } catch (msgError) {
-        console.warn('⚠️ Firebase Messaging başlatılamadı:', msgError.message);
+        console.warn('âš ï¸ Firebase Messaging baÅŸlatÄ±lamadÄ±:', msgError.message);
       }
       
       isFirebaseInitialized = true;
-      console.log('✅ Firebase başarıyla başlatıldı!');
+      console.log('âœ… Firebase baÅŸarÄ±yla baÅŸlatÄ±ldÄ±!');
       return true;
     } else {
-      throw new Error('Firebase SDK yüklenmedi!');
+      throw new Error('Firebase SDK yÃ¼klenmedi!');
     }
   } catch (error) {
-    console.error('❌ Firebase başlatma hatası:', error);
+    console.error('âŒ Firebase baÅŸlatma hatasÄ±:', error);
     isFirebaseInitialized = false;
     return false;
   }
@@ -81,20 +331,20 @@ function initializeFirebase(config = null) {
  */
 async function testFirebaseConnection() {
   if (!isFirebaseInitialized || !firebaseDatabase) {
-    console.warn('⚠️ Firebase başlatılmamış, connection test atlanıyor');
+    console.warn('âš ï¸ Firebase baÅŸlatÄ±lmamÄ±ÅŸ, connection test atlanÄ±yor');
     return false;
   }
 
   try {
-    // file:// protokolünde .info/connected çalışmayabilir, direkt database'e yazma deneyelim
+    // file:// protokolÃ¼nde .info/connected Ã§alÄ±ÅŸmayabilir, direkt database'e yazma deneyelim
     const testRef = firebaseDatabase.ref('_connection_test');
     await testRef.set({ timestamp: Date.now() });
     await testRef.remove(); // Temizlik
-    console.log('✅ Firebase bağlantı testi başarılı!');
+    console.log('âœ… Firebase baÄŸlantÄ± testi baÅŸarÄ±lÄ±!');
     return true;
   } catch (error) {
-    console.warn('⚠️ Firebase bağlantı testi başarısız (file:// protokolünde normal):', error.message);
-    // file:// protokolünde bağlantı testi başarısız olsa bile, realtime listener çalışabilir
+    console.warn('âš ï¸ Firebase baÄŸlantÄ± testi baÅŸarÄ±sÄ±z (file:// protokolÃ¼nde normal):', error.message);
+    // file:// protokolÃ¼nde baÄŸlantÄ± testi baÅŸarÄ±sÄ±z olsa bile, realtime listener Ã§alÄ±ÅŸabilir
     return true; // Yine de devam et
   }
 }
@@ -104,7 +354,7 @@ async function testFirebaseConnection() {
  */
 async function sendDataToFirebase(data) {
   if (!isFirebaseInitialized || !firebaseDatabase) {
-    throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+    throw new Error('Firebase baÅŸlatÄ±lmamÄ±ÅŸ! LÃ¼tfen Ã¶nce Firebase ayarlarÄ±nÄ± yapÄ±n.');
   }
 
   try {
@@ -117,17 +367,19 @@ async function sendDataToFirebase(data) {
     updates['/reservations'] = data.reservationsData || [];
     updates['/maintenance'] = data.maintenanceData || [];
     updates['/activities'] = data.activitiesData || [];
-    updates['/documents'] = data.documentsData || []; // ✅ Dosyaları ekle
+    const sanitizedDocuments = sanitizeDocumentsForFirebase(data.documentsData || data.documents || []);
+    updates['/documents'] = sanitizedDocuments;
+    updates['/documentsData'] = sanitizedDocuments;
     updates['/settings'] = data.settings || {};
     updates['/lastUpdate'] = new Date().toISOString();
 
     // Send to Firebase
     await firebaseDatabase.ref().update(updates);
     
-    console.log('✅ Veriler Firebase\'e gönderildi!');
+    console.log('âœ… Veriler Firebase\'e gÃ¶nderildi!');
     return true;
   } catch (error) {
-    console.error('❌ Firebase\'e veri gönderme hatası:', error);
+    console.error('âŒ Firebase\'e veri gÃ¶nderme hatasÄ±:', error);
     throw error;
   }
 }
@@ -137,21 +389,72 @@ async function sendDataToFirebase(data) {
  */
 async function fetchDataFromFirebase() {
   if (!isFirebaseInitialized || !firebaseDatabase) {
-    throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
+    throw new Error('Firebase baÅŸlatÄ±lmamÄ±ÅŸ! LÃ¼tfen Ã¶nce Firebase ayarlarÄ±nÄ± yapÄ±n.');
+  }
+
+  let data = null;
+
+  try {
+    console.log('🔄 Firebase snapshot çekiliyor (WebSocket)...');
+
+    // 🚀 Timeout ekle (5 saniye - kısa tutalım)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('WebSocket timeout')), 5000)
+    );
+
+    const snapshotPromise = firebaseDatabase.ref().once('value');
+
+    const snapshot = await Promise.race([snapshotPromise, timeoutPromise]);
+
+    console.log('✅ WebSocket snapshot alındı!');
+    data = snapshot.val();
+
+  } catch (wsError) {
+    // 🔥 FALLBACK: REST API kullan (WebSocket başarısız olursa)
+    console.warn('⚠️ WebSocket başarısız, REST API deneniyor:', wsError.message);
+
+    try {
+      const databaseURL = defaultFirebaseConfig.databaseURL;
+      const restUrl = `${databaseURL}/.json`;
+
+      console.log('🌐 REST API ile veri çekiliyor:', restUrl);
+
+      const response = await fetch(restUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      data = await response.json();
+      console.log('✅ REST API ile veri alındı!');
+
+    } catch (restError) {
+      console.error('❌ REST API de başarısız:', restError.message);
+      throw new Error(`Firebase bağlantı hatası: ${restError.message}`);
+    }
   }
 
   try {
-    const snapshot = await firebaseDatabase.ref().once('value');
-    const data = snapshot.val();
 
     if (!data) {
-      throw new Error('Firebase\'de veri bulunamadı!');
+      throw new Error('Firebase\'de veri bulunamadÄ±!');
     }
 
+    // 🚀 Helper: Object'i Array'e çevir (Firebase'den Object gelirse)
+    const toArray = (obj) => {
+      if (!obj) return [];
+      if (Array.isArray(obj)) return obj;
+      return Object.values(obj).filter(Boolean); // null/undefined'ları filtrele
+    };
+
     // Process activities to convert date strings to Date objects
-    let processedActivities = data.activities || [];
-    if (Array.isArray(processedActivities)) {
-      processedActivities = processedActivities.map(activity => {
+    let processedActivities = toArray(data.activities);
+    processedActivities = processedActivities.map(activity => {
         if (!activity) return null;
         
         try {
@@ -183,21 +486,27 @@ async function fetchDataFromFirebase() {
       }).filter(activity => activity !== null);
     }
 
+    // 🚀 Documents - basit toArray kullan
+    const processedDocuments = toArray(data.documents || data.documentsData);
+
     const result = {
-      vehiclesData: data.vehicles || [],
-      customersData: data.customers || [],
-      rentalsData: data.rentals || [],
-      reservationsData: data.reservations || [],
-      maintenanceData: data.maintenance || [],
+      vehiclesData: toArray(data.vehicles), // 🚀 Object to Array
+      customersData: toArray(data.customers), // 🚀 Object to Array
+      rentalsData: toArray(data.rentals), // 🚀 Object to Array
+      reservationsData: toArray(data.reservations), // 🚀 Object to Array
+      maintenanceData: toArray(data.maintenance), // 🚀 Object to Array
       activitiesData: processedActivities,
+      documentsData: processedDocuments,
       settings: data.settings || {},
       lastUpdate: data.lastUpdate || null
     };
 
-    console.log('✅ Veriler Firebase\'den alındı! (Activities:', processedActivities.length, ')');
+    result.documents = processedDocuments;
+
+    console.log('Veriler Firebase\'den alindi! (Activities: ' + processedActivities.length + ' | Documents: ' + processedDocuments.length + ')');
     return result;
   } catch (error) {
-    console.error('❌ Firebase\'den veri çekme hatası:', error);
+    console.error('âŒ Firebase\'den veri Ã§ekme hatasÄ±:', error);
     throw error;
   }
 }
@@ -207,24 +516,24 @@ async function fetchDataFromFirebase() {
  */
 function setupFirebaseListener(callback) {
   if (!isFirebaseInitialized || !firebaseDatabase) {
-    console.warn('Firebase başlatılmamış, listener kurulamadı!');
+    console.warn('Firebase baÅŸlatÄ±lmamÄ±ÅŸ, listener kurulamadÄ±!');
     return null;
   }
 
   try {
     const ref = firebaseDatabase.ref();
-    ref.on('value', (snapshot) => {
+    ref.on('value', async (snapshot) => {
       const data = snapshot.val();
       if (data && callback) {
-        // 🔥 KRITIK FIX: Date objelerini parse et
+        // ğŸ”¥ KRITIK FIX: Date objelerini parse et
         const processedData = { ...data };
         
-        // Activities date'lerini düzelt
+        // Activities date'lerini dÃ¼zelt
         if (processedData.activities && Array.isArray(processedData.activities)) {
           processedData.activities = processedData.activities.map(activity => {
             if (!activity) return null;
             
-            // Date parse - güvenli
+            // Date parse - gÃ¼venli
             let parsedDate = new Date();
             try {
               if (activity.date) {
@@ -232,7 +541,7 @@ function setupFirebaseListener(callback) {
               } else if (activity.time) {
                 parsedDate = new Date(activity.time);
               }
-              // Invalid date kontrolü
+              // Invalid date kontrolÃ¼
               if (isNaN(parsedDate.getTime())) {
                 parsedDate = new Date();
               }
@@ -247,17 +556,36 @@ function setupFirebaseListener(callback) {
               time: parsedDate,
               date: parsedDate // Hem time hem date olsun
             };
-          }).filter(a => a !== null); // null'ları temizle
+          }).filter(a => a !== null); // null'larÄ± temizle
         }
         
+        const listenerRawDocs = Array.isArray(processedData.documents)
+          ? processedData.documents
+          : Array.isArray(processedData.documentsData)
+            ? processedData.documentsData
+            : [];
+
+        try {
+          const storageDocs = await fetchDocumentsFromStorage();
+          const mergedDocs = mergeDocumentLists(listenerRawDocs, storageDocs);
+          const normalizedDocs = normalizeDocumentsForClient(mergedDocs);
+          processedData.documents = normalizedDocs;
+          processedData.documentsData = normalizedDocs;
+        } catch (listenerError) {
+          console.warn('Firebase Storage dokumanlari listener uzerinden getirilemedi:', listenerError);
+          const fallbackDocs = normalizeDocumentsForClient(mergeDocumentLists(listenerRawDocs, []));
+          processedData.documents = fallbackDocs;
+          processedData.documentsData = fallbackDocs;
+        }
+
         callback(processedData);
       }
     });
 
-    console.log('✅ Firebase realtime listener kuruldu!');
+    console.log('âœ… Firebase realtime listener kuruldu!');
     return ref;
   } catch (error) {
-    console.error('❌ Firebase listener kurulumu hatası:', error);
+    console.error('âŒ Firebase listener kurulumu hatasÄ±:', error);
     return null;
   }
 }
@@ -277,7 +605,7 @@ async function loadDataFromFirebase() {
 function removeFirebaseListener(ref) {
   if (ref) {
     ref.off();
-    console.log('Firebase listener kaldırıldı!');
+    console.log('Firebase listener kaldÄ±rÄ±ldÄ±!');
   }
 }
 
@@ -287,28 +615,28 @@ function removeFirebaseListener(ref) {
  */
 async function autoLoadFromFirebase() {
   try {
-    console.log('🔄 Otomatik Firebase sync başlatılıyor...');
+    console.log('ğŸ”„ Otomatik Firebase sync baÅŸlatÄ±lÄ±yor...');
     
     if (!isFirebaseInitialized) {
-      console.log('🔧 Firebase varsayılan config ile başlatılıyor...');
+      console.log('ğŸ”§ Firebase varsayÄ±lan config ile baÅŸlatÄ±lÄ±yor...');
       const initialized = initializeFirebase(defaultFirebaseConfig);
       if (!initialized) {
-        throw new Error('Firebase başlatılamadı');
+        throw new Error('Firebase baÅŸlatÄ±lamadÄ±');
       }
     }
 
-    // Test connection first (optional, file:// protokolünde başarısız olabilir)
+    // Test connection first (optional, file:// protokolÃ¼nde baÅŸarÄ±sÄ±z olabilir)
     const isConnected = await testFirebaseConnection();
-    console.log(`🔗 Firebase bağlantı durumu: ${isConnected ? '✅ Bağlı' : '⚠️ Bağlantı testi başarısız (realtime listener çalışacak)'}`);
+    console.log(`ğŸ”— Firebase baÄŸlantÄ± durumu: ${isConnected ? 'âœ… BaÄŸlÄ±' : 'âš ï¸ BaÄŸlantÄ± testi baÅŸarÄ±sÄ±z (realtime listener Ã§alÄ±ÅŸacak)'}`);
 
-    // Fetch data from Firebase (connection test başarısız olsa bile dene)
+    // Fetch data from Firebase (connection test baÅŸarÄ±sÄ±z olsa bile dene)
     const firebaseData = await fetchDataFromFirebase();
     
     if (!firebaseData) {
-      throw new Error('Firebase\'den veri alınamadı');
+      throw new Error('Firebase\'den veri alÄ±namadÄ±');
     }
 
-    console.log('✅ Firebase verisi başarıyla yüklendi:', {
+    console.log('âœ… Firebase verisi baÅŸarÄ±yla yÃ¼klendi:', {
       vehicles: firebaseData.vehiclesData?.length || 0,
       customers: firebaseData.customersData?.length || 0,
       rentals: firebaseData.rentalsData?.length || 0,
@@ -322,7 +650,7 @@ async function autoLoadFromFirebase() {
       error: null
     };
   } catch (error) {
-    console.error('❌ Otomatik Firebase sync hatası:', error.message);
+    console.error('âŒ Otomatik Firebase sync hatasÄ±:', error.message);
     return {
       success: false,
       data: null,
@@ -345,49 +673,49 @@ async function requestNotificationPermission() {
   try {
     // Check if messaging is available
     if (!firebaseMessaging) {
-      console.warn('⚠️ Firebase Messaging kullanılamıyor (HTTP üzerinde olabilir, HTTPS gerekli)');
+      console.warn('âš ï¸ Firebase Messaging kullanÄ±lamÄ±yor (HTTP Ã¼zerinde olabilir, HTTPS gerekli)');
       return null;
     }
 
     // Check if browser supports notifications
     if (!('Notification' in window)) {
-      console.warn('⚠️ Bu tarayıcı bildirimleri desteklemiyor!');
+      console.warn('âš ï¸ Bu tarayÄ±cÄ± bildirimleri desteklemiyor!');
       return null;
     }
 
     // TEMPORARILY DISABLED - Service Worker issues in production
-    console.log('ℹ️ Push notifications geçici olarak devre dışı (service worker sorunları)');
+    console.log('â„¹ï¸ Push notifications geÃ§ici olarak devre dÄ±ÅŸÄ± (service worker sorunlarÄ±)');
     return null;
 
     // Request permission
-    // console.log('🔔 Bildirim izni isteniyor...');
+    // console.log('ğŸ”” Bildirim izni isteniyor...');
     // const permission = await Notification.requestPermission();
     
     if (permission === 'granted') {
-      console.log('✅ Bildirim izni verildi!');
+      console.log('âœ… Bildirim izni verildi!');
       
       // Get FCM token
       try {
         const token = await firebaseMessaging.getToken({ vapidKey: vapidKey });
-        console.log('✅ FCM Token alındı:', token);
+        console.log('âœ… FCM Token alÄ±ndÄ±:', token);
         
-        // Save token to Firebase (her cihaz için farklı token)
+        // Save token to Firebase (her cihaz iÃ§in farklÄ± token)
         await saveDeviceToken(token);
         
         return token;
       } catch (tokenError) {
-        console.error('❌ FCM Token alma hatası:', tokenError);
+        console.error('âŒ FCM Token alma hatasÄ±:', tokenError);
         return null;
       }
     } else if (permission === 'denied') {
-      console.warn('❌ Bildirim izni reddedildi!');
+      console.warn('âŒ Bildirim izni reddedildi!');
       return null;
     } else {
-      console.warn('⚠️ Bildirim izni askıda (varsayılan)');
+      console.warn('âš ï¸ Bildirim izni askÄ±da (varsayÄ±lan)');
       return null;
     }
   } catch (error) {
-    console.error('❌ Bildirim izni hatası:', error);
+    console.error('âŒ Bildirim izni hatasÄ±:', error);
     return null;
   }
 }
@@ -397,7 +725,7 @@ async function requestNotificationPermission() {
  */
 async function saveDeviceToken(token) {
   if (!isFirebaseInitialized || !firebaseDatabase) {
-    console.warn('Firebase başlatılmamış, token kaydedilemedi!');
+    console.warn('Firebase baÅŸlatÄ±lmamÄ±ÅŸ, token kaydedilemedi!');
     return;
   }
 
@@ -408,9 +736,9 @@ async function saveDeviceToken(token) {
       lastUpdated: new Date().toISOString(),
       userAgent: navigator.userAgent
     });
-    console.log('✅ Cihaz token\'ı Firebase\'e kaydedildi!');
+    console.log('âœ… Cihaz token\'Ä± Firebase\'e kaydedildi!');
   } catch (error) {
-    console.error('❌ Token kaydetme hatası:', error);
+    console.error('âŒ Token kaydetme hatasÄ±:', error);
   }
 }
 
@@ -431,16 +759,16 @@ function getDeviceId() {
  */
 function listenForMessages(callback) {
   if (!firebaseMessaging) {
-    console.warn('Firebase Messaging kullanılamıyor!');
+    console.warn('Firebase Messaging kullanÄ±lamÄ±yor!');
     return;
   }
 
   try {
     firebaseMessaging.onMessage((payload) => {
-      console.log('🔔 Ön planda bildirim alındı:', payload);
+      console.log('ğŸ”” Ã–n planda bildirim alÄ±ndÄ±:', payload);
       
       // Show browser notification
-      const notificationTitle = payload.notification.title || 'Filo Yönetim';
+      const notificationTitle = payload.notification.title || 'Filo YÃ¶netim';
       const notificationOptions = {
         body: payload.notification.body || 'Yeni bir bildiriminiz var',
         icon: '/icon-192x192.png',
@@ -466,19 +794,19 @@ function listenForMessages(callback) {
       }
     });
 
-    console.log('✅ Bildirim dinleyicisi kuruldu!');
+    console.log('âœ… Bildirim dinleyicisi kuruldu!');
   } catch (error) {
-    console.error('❌ Bildirim dinleyici hatası:', error);
+    console.error('âŒ Bildirim dinleyici hatasÄ±:', error);
   }
 }
 
 /**
  * Send notification to all devices (from Firebase Functions or admin SDK)
- * Bu fonksiyon sadece referans - gerçek gönderim backend'den yapılacak
+ * Bu fonksiyon sadece referans - gerÃ§ek gÃ¶nderim backend'den yapÄ±lacak
  */
 async function sendNotificationToAllDevices(title, body, data = {}) {
-  console.log('ℹ️ Bildirim gönderimi backend\'den yapılmalı (Firebase Functions/Admin SDK)');
-  console.log('Gönderilecek bildirim:', { title, body, data });
+  console.log('â„¹ï¸ Bildirim gÃ¶nderimi backend\'den yapÄ±lmalÄ± (Firebase Functions/Admin SDK)');
+  console.log('GÃ¶nderilecek bildirim:', { title, body, data });
   
   // This is just to save the notification intent to Firebase
   // A Firebase Function or backend service will read this and send actual notifications
@@ -490,9 +818,9 @@ async function sendNotificationToAllDevices(title, body, data = {}) {
       timestamp: new Date().toISOString(),
       sent: false
     });
-    console.log('✅ Bildirim kuyruğa eklendi (backend gönderecek)');
+    console.log('âœ… Bildirim kuyruÄŸa eklendi (backend gÃ¶nderecek)');
   } catch (error) {
-    console.error('❌ Bildirim kuyruğa ekleme hatası:', error);
+    console.error('âŒ Bildirim kuyruÄŸa ekleme hatasÄ±:', error);
   }
 }
 
@@ -500,44 +828,44 @@ async function sendNotificationToAllDevices(title, body, data = {}) {
  * Trigger notification for specific events
  */
 async function triggerNotification(eventType, eventData) {
-  let title = 'Filo Yönetim';
+  let title = 'Filo YÃ¶netim';
   let body = '';
   const data = { eventType, ...eventData };
 
   switch (eventType) {
     case 'new_rental':
-      title = '🚗 Yeni Kiralama';
-      body = `${eventData.vehiclePlate} plakalı araç ${eventData.customerName} tarafından kiralandı.`;
+      title = 'ğŸš— Yeni Kiralama';
+      body = `${eventData.vehiclePlate} plakalÄ± araÃ§ ${eventData.customerName} tarafÄ±ndan kiralandÄ±.`;
       break;
     
     case 'rental_ending_soon':
-      title = '⏰ Kiralama Süresi Bitiyor';
-      body = `${eventData.vehiclePlate} plakalı aracın kiralama süresi ${eventData.daysLeft} gün sonra bitiyor.`;
+      title = 'â° Kiralama SÃ¼resi Bitiyor';
+      body = `${eventData.vehiclePlate} plakalÄ± aracÄ±n kiralama sÃ¼resi ${eventData.daysLeft} gÃ¼n sonra bitiyor.`;
       break;
     
     case 'vehicle_returned':
-      title = '✅ Araç Teslim Alındı';
-      body = `${eventData.vehiclePlate} plakalı araç ${eventData.customerName} tarafından teslim edildi.`;
+      title = 'âœ… AraÃ§ Teslim AlÄ±ndÄ±';
+      body = `${eventData.vehiclePlate} plakalÄ± araÃ§ ${eventData.customerName} tarafÄ±ndan teslim edildi.`;
       break;
     
     case 'maintenance_due':
-      title = '🔧 Bakım Zamanı';
-      body = `${eventData.vehiclePlate} plakalı aracın bakım zamanı geldi!`;
+      title = 'ğŸ”§ BakÄ±m ZamanÄ±';
+      body = `${eventData.vehiclePlate} plakalÄ± aracÄ±n bakÄ±m zamanÄ± geldi!`;
       break;
     
     case 'new_reservation':
-      title = '📅 Yeni Rezervasyon';
-      body = `${eventData.vehiclePlate} için ${eventData.customerName} tarafından rezervasyon yapıldı.`;
+      title = 'ğŸ“… Yeni Rezervasyon';
+      body = `${eventData.vehiclePlate} iÃ§in ${eventData.customerName} tarafÄ±ndan rezervasyon yapÄ±ldÄ±.`;
       break;
     
     case 'payment_reminder':
-      title = '💰 Ödeme Hatırlatması';
-      body = `${eventData.customerName} - ${eventData.amount}₺ ödeme bekliyor.`;
+      title = 'ğŸ’° Ã–deme HatÄ±rlatmasÄ±';
+      body = `${eventData.customerName} - ${eventData.amount}â‚º Ã¶deme bekliyor.`;
       break;
     
     default:
       title = 'Bildirim';
-      body = eventData.message || 'Yeni bir güncelleme var.';
+      body = eventData.message || 'Yeni bir gÃ¼ncelleme var.';
   }
 
   await sendNotificationToAllDevices(title, body, data);
@@ -547,15 +875,15 @@ async function triggerNotification(eventType, eventData) {
  * Initialize Push Notifications (call this on app start)
  */
 async function initializePushNotifications() {
-    console.log('🔔 Push notification servisi başlatılıyor...');
+    console.log('ğŸ”” Push notification servisi baÅŸlatÄ±lÄ±yor...');
     
-    // HTTPS kontrolü
+    // HTTPS kontrolÃ¼
     const isHTTPS = window.location.protocol === 'https:';
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
     if (!isHTTPS && !isLocalhost) {
-        console.warn('⚠️ Push notification için HTTPS gerekli!');
-        console.warn('💡 Firebase Hosting\'e deploy edin: npm run deploy');
+        console.warn('âš ï¸ Push notification iÃ§in HTTPS gerekli!');
+        console.warn('ğŸ’¡ Firebase Hosting\'e deploy edin: npm run deploy');
         return null;
     }
     
@@ -565,7 +893,7 @@ async function initializePushNotifications() {
     if (token) {
         // Listen for foreground messages
         listenForMessages((payload) => {
-            console.log('Bildirim alındı:', payload);
+            console.log('Bildirim alÄ±ndÄ±:', payload);
             // Refresh app data if needed
             if (payload.data?.refresh === 'true') {
                 console.log('Veriler yenileniyor...');
@@ -584,25 +912,52 @@ async function initializePushNotifications() {
  * @param {Function} progressCallback - Progress callback (0-100)
  * @returns {Promise<string>} - Download URL
  */
-async function uploadFileToStorage(file, category = 'Diğer', progressCallback = null) {
+async function uploadFileToStorage(file, category = 'Diger', progressCallback = null, options = {}) {
     if (!firebaseStorage) {
-        throw new Error('Firebase Storage başlatılmamış!');
+        throw new Error('Firebase Storage baÅŸlatÄ±lmamÄ±ÅŸ!');
     }
 
     try {
-        // Dosya yolu oluştur: documents/kategori/timestamp_filename
+        // Dosya yolu oluÅŸtur: documents/kategori/timestamp_filename
         const timestamp = Date.now();
         const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const filePath = `documents/${category}/${timestamp}_${sanitizedFileName}`;
         
-        // Storage referansı oluştur
+        // Storage referansÄ± oluÅŸtur
         const storageRef = firebaseStorage.ref();
         const fileRef = storageRef.child(filePath);
         
-        console.log(`📤 Firebase Storage'a yükleniyor: ${filePath}`);
+        console.log(`ğŸ“¤ Firebase Storage'a yÃ¼kleniyor: ${filePath}`);
         
-        // Dosyayı yükle
-        const uploadTask = fileRef.put(file);
+        const metadata = {
+            cacheControl: 'public,max-age=3600',
+            customMetadata: (function () {
+                const baseMeta = {
+                    category: category,
+                    originalName: file.name
+                };
+                if (options && options.docId) {
+                    baseMeta.docId = String(options.docId);
+                }
+                if (options && Array.isArray(options.tags) && options.tags.length > 0) {
+                    baseMeta.tags = options.tags.join(',');
+                }
+                if (options && Array.isArray(options.linkedVehicles) && options.linkedVehicles.length > 0) {
+                    baseMeta.linkedVehicles = options.linkedVehicles.join(',');
+                }
+                if (options && options.description) {
+                    baseMeta.description = String(options.description);
+                }
+                return baseMeta;
+            })()
+        };
+
+        if (!metadata.customMetadata.docId) {
+            metadata.customMetadata.docId = String(hashStringToNumber(filePath));
+        }
+
+        // Dosyay�� yǬkle
+        const uploadTask = fileRef.put(file, metadata);
         
         // Progress tracking
         return new Promise((resolve, reject) => {
@@ -614,28 +969,28 @@ async function uploadFileToStorage(file, category = 'Diğer', progressCallback =
                     if (progressCallback) {
                         progressCallback(progress);
                     }
-                    console.log(`⏳ Yükleme: ${progress}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)`);
+                    console.log(`â³ YÃ¼kleme: ${progress}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)`);
                 },
                 (error) => {
                     // Error callback
-                    console.error('❌ Firebase Storage yükleme hatası:', error);
+                    console.error('âŒ Firebase Storage yÃ¼kleme hatasÄ±:', error);
                     reject(error);
                 },
                 async () => {
                     // Success callback
                     try {
                         const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                        console.log(`✅ Dosya yüklendi: ${downloadURL}`);
+                        console.log(`âœ… Dosya yÃ¼klendi: ${downloadURL}`);
                         resolve(downloadURL);
                     } catch (error) {
-                        console.error('❌ Download URL alınamadı:', error);
-                        reject(error);
+        // Dosyay�� yǬkle
+        const uploadTask = fileRef.put(file, metadata);
                     }
                 }
             );
         });
     } catch (error) {
-        console.error('❌ uploadFileToStorage hatası:', error);
+        console.error('âŒ uploadFileToStorage hatasÄ±:', error);
         throw error;
     }
 }
@@ -646,25 +1001,38 @@ async function uploadFileToStorage(file, category = 'Diğer', progressCallback =
  */
 async function deleteFileFromStorage(fileUrl) {
     if (!firebaseStorage) {
-        throw new Error('Firebase Storage başlatılmamış!');
+        throw new Error('Firebase Storage baÅŸlatÄ±lmamÄ±ÅŸ!');
     }
 
     try {
-        // URL'den storage referansı oluştur
+        // URL'den storage referansÄ± oluÅŸtur
         const storageRef = firebaseStorage.refFromURL(fileUrl);
         
-        console.log(`🗑️ Firebase Storage'dan siliniyor: ${storageRef.fullPath}`);
+        console.log(`ğŸ—‘ï¸ Firebase Storage'dan siliniyor: ${storageRef.fullPath}`);
         
         await storageRef.delete();
-        console.log('✅ Dosya Firebase Storage\'dan silindi');
+        console.log('âœ… Dosya Firebase Storage\'dan silindi');
         return true;
     } catch (error) {
-        console.error('❌ Firebase Storage silme hatası:', error);
-        // Dosya bulunamadıysa hata verme (zaten silinmiş olabilir)
+        console.error('âŒ Firebase Storage silme hatasÄ±:', error);
+        // Dosya bulunamadÄ±ysa hata verme (zaten silinmiÅŸ olabilir)
         if (error.code === 'storage/object-not-found') {
-            console.warn('⚠️ Dosya zaten silinmiş');
+            console.warn('âš ï¸ Dosya zaten silinmiÅŸ');
             return true;
         }
         throw error;
     }
+}
+
+
+
+
+// ============================================
+// GLOBAL EXPORTS (window object)
+// ============================================
+if (typeof window !== 'undefined') {
+    window.uploadFileToStorage = uploadFileToStorage;
+    window.deleteFileFromStorage = deleteFileFromStorage;
+    
+    console.log('✅ Firebase Storage fonksiyonları window\'a export edildi');
 }

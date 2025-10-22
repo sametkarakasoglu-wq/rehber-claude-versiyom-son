@@ -1,4 +1,4 @@
-
+﻿
 /**
  * Service Worker for Araç Filo Yönetimi PWA
  * Provides offline functionality and caching strategy
@@ -121,7 +121,7 @@ try {
     authDomain: "rehber-filo.firebaseapp.com",
     databaseURL: "https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "rehber-filo",
-    storageBucket: "rehber-filo.firebasestorage.app",
+    storageBucket: "rehber-filo.appspot.com",
     messagingSenderId: "1022169726073",
     appId: "1:1022169726073:web:584648469dd7854248a8a8"
   });
