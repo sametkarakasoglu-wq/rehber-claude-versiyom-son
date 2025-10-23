@@ -22,6 +22,9 @@ console.log('🚀 index.js yükleniyor...');
 // 🔒 Render guard - prevent concurrent renders
 let isRendering = false;
 
+// 🚀 PWA Install - deferred prompt için global değişken
+let deferredPrompt = null;
+
 // Simple pseudo-ReactDOM render function
 function render(element, container) {
     if (container) {
@@ -802,7 +805,7 @@ const MaintenancePage = () => {
     `;
 };
 const SettingsPage = () => {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _s2, _t, _u, _v, _w, _x;
     const createSettingCard = (title, content) => `
       <div class="setting-content-card">
           <h4>${title}</h4>
@@ -1009,6 +1012,9 @@ const SettingsPage = () => {
                       <button class="btn btn-info" id="btn-fetch-from-firebase" ${!((_x = state.settings) === null || _x === void 0 ? void 0 : _x.firebaseEnabled) ? 'disabled' : ''}>
                           <i class="fa-solid fa-cloud-arrow-down"></i> Firebase'den Al
                       </button>
+                      <button class="btn btn-warning" id="btn-recover-storage-files" ${!((_x = state.settings) === null || _x === void 0 ? void 0 : _x.firebaseEnabled) ? 'disabled' : ''} style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white;">
+                          <i class="fa-solid fa-file-circle-plus"></i> Storage'dan Dosyaları Yükle
+                      </button>
                   </div>
                   <div style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px; font-size: 13px; color: #92400e;">
                       <i class="fa-solid fa-info-circle"></i> <strong>Bilgi:</strong> Firebase ayarlarını kaydettiğinizde, sayfa kapatılırken verileriniz otomatik olarak senkronize edilecektir.
@@ -1020,24 +1026,38 @@ const SettingsPage = () => {
             icon: 'fa-solid fa-mobile-screen',
             title: 'PWA (Mobil Uygulama)',
             content: `
-              ${createSettingCard('Masaüstü/Ana Ekran Kurulumu', `
-                  <p class="setting-description">Bu uygulamayı bilgisayarınıza veya telefonunuzun ana ekranına ekleyerek hızlı erişim sağlayın.</p>
-                  <div class="pwa-info-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                      <i class="fa-solid fa-mobile-screen" style="font-size: 48px; margin-bottom: 12px;"></i>
-                      <h4 style="margin: 0 0 8px 0; color: white;">Progressive Web App</h4>
-                      <p style="margin: 0; font-size: 14px; opacity: 0.9;">Offline çalışma, hızlı yükleme ve mobil deneyim</p>
+              <div id="pwa-install-container">
+                  <div class="pwa-install-card" id="pwa-install-card" style="display: none;">
+                      <div class="pwa-install-icon">📲</div>
+                      <div class="pwa-install-content">
+                          <h4>Ana Ekrana Ekle</h4>
+                          <p>Bu uygulamayı bilgisayarınıza veya telefonunuzun ana ekranına ekleyerek hızlı erişim sağlayın.</p>
+                          <ul class="pwa-install-benefits">
+                              <li>⚡ Daha hızlı açılır</li>
+                              <li>🔒 Çevrimdışı çalışır</li>
+                              <li>📱 Ana ekrandan tek tıkla aç</li>
+                          </ul>
+                          <button id="pwa-install-button" class="btn-pwa-install">
+                              <span id="pwa-install-text">📲 Şimdi Yükle</span>
+                              <span id="pwa-install-loading" style="display:none;">⏳ Yükleniyor...</span>
+                          </button>
+                          <button id="pwa-install-dismiss" class="btn-pwa-dismiss">
+                              Daha Sonra Hatırlat
+                          </button>
+                      </div>
                   </div>
-                  <div class="backup-restore-buttons">
-                      <button class="btn btn-primary" id="btn-install-pwa">
-                          <i class="fa-solid fa-download"></i> Uygulamayı Kur
-                      </button>
+                  <div id="pwa-already-installed" style="display: none; padding: 20px; text-align: center; background: #f0fdf4; border-radius: 12px; border: 2px solid #22c55e;">
+                      <i class="fa-solid fa-check-circle" style="font-size: 48px; color: #22c55e; margin-bottom: 12px;"></i>
+                      <h4 style="color: #166534; margin: 0 0 8px 0;">Uygulama Zaten Kurulu!</h4>
+                      <p style="color: #166534; margin: 0; font-size: 14px;">Ana ekranınızdan kullanabilirsiniz.</p>
                   </div>
-                  <div style="margin-top: 16px; padding: 12px; background: #e0f2fe; border-radius: 6px; font-size: 13px; color: #0c4a6e;">
-                      <p style="margin: 0 0 8px 0;"><i class="fa-solid fa-check-circle"></i> <strong>Offline Çalışma:</strong> İnternet bağlantısı olmadan kullanın</p>
-                      <p style="margin: 0 0 8px 0;"><i class="fa-solid fa-check-circle"></i> <strong>Hızlı Yükleme:</strong> Anında açılış süresi</p>
-                      <p style="margin: 0;"><i class="fa-solid fa-check-circle"></i> <strong>Ana Ekranda:</strong> Uygulama gibi kullanın</p>
+                  <div id="pwa-dev-mode" style="padding: 20px; text-align: center; background: #fef3c7; border-radius: 12px; border: 2px solid #f59e0b;">
+                      <i class="fa-solid fa-info-circle" style="font-size: 48px; color: #d97706; margin-bottom: 12px;"></i>
+                      <h4 style="color: #92400e; margin: 0 0 8px 0;">PWA Kurulum Butonu</h4>
+                      <p style="color: #92400e; margin: 0 0 12px 0; font-size: 14px;">Bu özellik sadece <strong>HTTPS</strong> üzerinden çalışır.</p>
+                      <p style="color: #92400e; margin: 0; font-size: 13px; opacity: 0.8;">Şu an <strong>localhost</strong>'tasınız. Production'da (https://rehber-filo.web.app) açınca "Şimdi Yükle" butonu görünecek!</p>
                   </div>
-              `)}
+              </div>
           `
         },
         {
@@ -1572,14 +1592,14 @@ const DocumentPreviewModal = () => {
                 
                 <div class="document-preview-body">
                     ${isPDF ? `
-                        <iframe 
-                            src="${doc.storageType === 'firebase' ? doc.url : doc.fileData}" 
+                        <iframe
+                            src="${doc.url || doc.fileData}"
                             class="document-iframe"
                             frameborder="0"
                         ></iframe>
                     ` : isImage ? `
-                        <img 
-                            src="${doc.storageType === 'firebase' ? doc.url : doc.fileData}" 
+                        <img
+                            src="${doc.url || doc.fileData}"
                             alt="${doc.name}"
                             class="document-image"
                         >
@@ -2977,6 +2997,72 @@ function attachEventListeners() {
                 btn.innerHTML = originalText;
             }
         }));
+
+        // 🔥 Storage'dan Dosyaları Yükle butonu
+        (_s = document.getElementById('btn-recover-storage-files')) === null || _s === void 0 ? void 0 : _s.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            e.stopPropagation();
+            const btn = e.target;
+            const originalText = btn.innerHTML;
+
+            if (!confirm('🔄 Firebase Storage\'dan tüm dosyalar taranacak ve metadata oluşturulacak.\n\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Taranıyor...';
+
+                // Firebase'i başlat
+                if (typeof initializeFirebase === 'function') {
+                    yield initializeFirebase((_a = state.settings) === null || _a === void 0 ? void 0 : _a.firebaseConfig);
+                }
+
+                // Storage'dan dosyaları listele
+                if (typeof listAllFilesFromStorage === 'function') {
+                    const files = yield listAllFilesFromStorage();
+
+                    if (files && files.length > 0) {
+                        // documentsData'yı temizle ve yeni dosyaları ekle
+                        documentsData.length = 0;
+                        documentsData.push(...files);
+
+                        // localStorage'a kaydet
+                        saveDataToLocalStorage();
+
+                        // Firebase Realtime Database'e kaydet
+                        if (typeof sendDataToFirebase === 'function') {
+                            yield sendDataToFirebase({
+                                vehiclesData,
+                                customersData,
+                                rentalsData,
+                                reservationsData,
+                                maintenanceData,
+                                activitiesData,
+                                documentsData,
+                                settings: state.settings
+                            });
+                        }
+
+                        // Render et
+                        renderApp();
+
+                        showToast(`✅ ${files.length} dosya başarıyla yüklendi ve kaydedildi!`, 'success');
+                    } else {
+                        showToast('⚠️ Storage\'da dosya bulunamadı!', 'warning');
+                    }
+                } else {
+                    throw new Error('listAllFilesFromStorage fonksiyonu yüklenmedi');
+                }
+            } catch (error) {
+                showToast(`❌ Hata: ${error.message}`, 'error');
+                console.error('Storage recovery error:', error);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }));
+
         // PWA Install button
         (_s = document.getElementById('btn-install-pwa')) === null || _s === void 0 ? void 0 : _s.addEventListener('click', (e) => __awaiter(this, void 0, void 0, function* () {
             e.stopPropagation();
@@ -3615,7 +3701,7 @@ function attachEventListeners() {
                 e.stopPropagation();
                 
                 const selectedCheckboxes = document.querySelectorAll('.doc-select-checkbox:checked');
-                const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.docId));
+                const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.docId); // ✅ String ID destekli
                 
                 if (selectedIds.length === 0) {
                     showToast('Lütfen silinecek dosyaları seçin', 'error');
@@ -3760,7 +3846,7 @@ function attachEventListeners() {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const docId = parseInt(btn.dataset.docId);
+                const docId = btn.dataset.docId; // ✅ String ID destekli (DOC-xxx formatı)
                 downloadDocument(docId);
             });
         });
@@ -3769,7 +3855,7 @@ function attachEventListeners() {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const docId = parseInt(btn.dataset.docId);
+                const docId = btn.dataset.docId; // ✅ String ID destekli (DOC-xxx formatı)
                 deleteDocument(docId);
             });
         });
@@ -3779,7 +3865,7 @@ function attachEventListeners() {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const docId = parseInt(btn.dataset.docId);
+                const docId = btn.dataset.docId; // ✅ String ID destekli (DOC-xxx formatı)
                 window.previewDocument(docId);
             });
         });
@@ -4001,7 +4087,18 @@ function attachEventListeners() {
                 });
             });
         });
-        
+
+        // 🚀 PWA INSTALL BUTTON EVENT LISTENERS
+        const pwaInstallButton = document.getElementById('pwa-install-button');
+        if (pwaInstallButton) {
+            pwaInstallButton.addEventListener('click', handlePWAInstallClick);
+        }
+
+        const pwaDismissButton = document.getElementById('pwa-install-dismiss');
+        if (pwaDismissButton) {
+            pwaDismissButton.addEventListener('click', handlePWADismissClick);
+        }
+
         // console.log('Event listeners attached successfully.');
     }
     catch (error) {
@@ -5569,10 +5666,170 @@ function initializeApp() {
                 }
             }), 1500); // 1.5 saniye bekle ki Firebase SDK yüklensin
         }
+
+        // 🚀 PWA INSTALL EVENT LISTENERS (Sadece bir kere çalışacak)
+        initializePWAEvents();
     }
     catch (error) {
         console.error('❌ Uygulama başlatma hatası:', error);
     }
+}
+
+/**
+ * ========================================
+ * PWA INSTALL EVENT HANDLERS
+ * ========================================
+ */
+
+function initializePWAEvents() {
+    console.log('🚀 PWA Install event listener\'ları başlatılıyor...');
+
+    // 1️⃣ Standalone mode kontrolü (zaten kuruluysa gösterme)
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        console.log('✅ Uygulama zaten standalone modda çalışıyor');
+        const installedDiv = document.getElementById('pwa-already-installed');
+        const installCard = document.getElementById('pwa-install-card');
+        const devMode = document.getElementById('pwa-dev-mode');
+        if (installedDiv) installedDiv.style.display = 'block';
+        if (installCard) installCard.style.display = 'none';
+        if (devMode) devMode.style.display = 'none';
+        return;
+    }
+
+    // 2️⃣ beforeinstallprompt event (PWA kurulabilir olduğunda tetiklenir)
+    window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('🎯 beforeinstallprompt event tetiklendi!');
+
+        // Tarayıcının otomatik install prompt'unu engelle
+        e.preventDefault();
+
+        // Prompt'u sakla
+        deferredPrompt = e;
+
+        // localStorage kontrolü (dismiss edilmiş mi?)
+        const dismissed = localStorage.getItem('pwa-install-dismissed');
+        const dismissTime = localStorage.getItem('pwa-install-dismiss-time');
+
+        if (dismissed === 'true' && dismissTime) {
+            const daysPassed = (Date.now() - parseInt(dismissTime)) / (1000 * 60 * 60 * 24);
+            if (daysPassed < 7) {
+                console.log('ℹ️ Install prompt gizli (kullanıcı %d gün önce dismiss etti)', Math.floor(daysPassed));
+                return;
+            } else {
+                console.log('⏰ 7 gün geçti, install prompt tekrar gösteriliyor');
+                localStorage.removeItem('pwa-install-dismissed');
+                localStorage.removeItem('pwa-install-dismiss-time');
+            }
+        }
+
+        // Dev mode mesajını gizle, install card'ı göster
+        const devMode = document.getElementById('pwa-dev-mode');
+        const installCard = document.getElementById('pwa-install-card');
+        if (devMode) devMode.style.display = 'none';
+        if (installCard) {
+            installCard.style.display = 'block';
+            console.log('✅ PWA install card gösterildi');
+        }
+    });
+
+    // 3️⃣ appinstalled event (uygulama kurulduğunda tetiklenir)
+    window.addEventListener('appinstalled', () => {
+        console.log('🎉 PWA başarıyla kuruldu!');
+        showToast('Uygulama başarıyla kuruldu! Ana ekranınızdan açabilirsiniz. 🎉', 'success');
+
+        // Install card ve dev mode'u gizle, installed mesajını göster
+        const installCard = document.getElementById('pwa-install-card');
+        const installedDiv = document.getElementById('pwa-already-installed');
+        const devMode = document.getElementById('pwa-dev-mode');
+        if (installCard) installCard.style.display = 'none';
+        if (devMode) devMode.style.display = 'none';
+        if (installedDiv) installedDiv.style.display = 'block';
+
+        // localStorage'ı temizle
+        localStorage.removeItem('pwa-install-dismissed');
+        localStorage.removeItem('pwa-install-dismiss-time');
+
+        deferredPrompt = null;
+    });
+
+    console.log('✅ PWA event listener\'ları hazır');
+}
+
+// PWA Install Button Click Handler
+async function handlePWAInstallClick() {
+    if (!deferredPrompt) {
+        showToast('Uygulama zaten kurulu veya tarayıcınız PWA kurulumunu desteklemiyor.', 'info');
+        return;
+    }
+
+    try {
+        // Loading state
+        const btn = document.getElementById('pwa-install-button');
+        const btnText = document.getElementById('pwa-install-text');
+        const btnLoading = document.getElementById('pwa-install-loading');
+
+        if (btn) btn.disabled = true;
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoading) btnLoading.style.display = 'inline';
+
+        console.log('📲 Install prompt gösteriliyor...');
+
+        // Show the install prompt
+        await deferredPrompt.prompt();
+
+        // Wait for the user to respond
+        const result = await deferredPrompt.userChoice;
+
+        if (result.outcome === 'accepted') {
+            console.log('✅ Kullanıcı uygulamayı yüklemeyi kabul etti');
+            showToast('Uygulama yükleniyor... 🚀', 'success');
+
+            // Hide install card
+            const installCard = document.getElementById('pwa-install-card');
+            if (installCard) installCard.style.display = 'none';
+
+            // Clear localStorage
+            localStorage.removeItem('pwa-install-dismissed');
+            localStorage.removeItem('pwa-install-dismiss-time');
+
+        } else {
+            console.log('❌ Kullanıcı uygulamayı yüklemeyi reddetti');
+            showToast('Yükleme iptal edildi', 'info');
+        }
+
+    } catch (error) {
+        console.error('❌ Install prompt hatası:', error);
+        showToast('Yükleme sırasında bir hata oluştu', 'error');
+    } finally {
+        // Reset button state
+        const btn = document.getElementById('pwa-install-button');
+        const btnText = document.getElementById('pwa-install-text');
+        const btnLoading = document.getElementById('pwa-install-loading');
+
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.style.display = 'inline';
+        if (btnLoading) btnLoading.style.display = 'none';
+
+        // Clear the deferredPrompt
+        deferredPrompt = null;
+    }
+}
+
+// PWA Dismiss Button Click Handler
+function handlePWADismissClick() {
+    // Hide install card
+    const installCard = document.getElementById('pwa-install-card');
+    if (installCard) installCard.style.display = 'none';
+
+    // Save to localStorage (7 gün sonra tekrar göster)
+    localStorage.setItem('pwa-install-dismissed', 'true');
+    localStorage.setItem('pwa-install-dismiss-time', Date.now().toString());
+
+    console.log('ℹ️ Kullanıcı install prompt\'u dismiss etti (7 gün sonra tekrar gösterilecek)');
+    showToast('7 gün sonra tekrar hatırlatacağım', 'info');
+
+    // Clear prompt
+    deferredPrompt = null;
 }
 
 /**
@@ -6171,11 +6428,32 @@ async function handleDocumentUpload(e) {
         
         // Array'e ekle
         documentsData.push(newDocument);
-        
-        // closeModal() zaten saveDataToLocalStorage() çağırır - renderApp() GEREKSİZ
+
+        // 🚀 HEM localStorage HEM Firebase'e kaydet!
+        saveDataToLocalStorage();
+
+        // 🔥 Firebase'e otomatik gönder (eğer sync aktifse)
+        if (typeof sendDataToFirebase === 'function' && state.settings?.firebaseSync?.enabled) {
+            console.log('🔄 Otomatik Firebase sync başlatılıyor...');
+            sendDataToFirebase({
+                vehiclesData,
+                customersData,
+                rentalsData,
+                reservationsData,
+                maintenanceData,
+                activitiesData,
+                documentsData, // ✅ Yeni dosya dahil
+                settings: state.settings
+            }).then(() => {
+                console.log('✅ Dosya metadata Firebase\'e kaydedildi!');
+            }).catch(err => {
+                console.error('❌ Firebase sync hatası:', err);
+            });
+        }
+
         closeModal();
-        
-        showToast('Dosya başarıyla yüklendi', 'success');
+
+        showToast('Dosya başarıyla yüklendi ve Firebase\'e kaydedildi!', 'success');
         logActivity('fa-solid fa-cloud-arrow-up', `Yeni dosya yüklendi: ${file.name}`);
         
     } catch (error) {

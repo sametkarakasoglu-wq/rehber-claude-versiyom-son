@@ -4,20 +4,20 @@
  * Provides offline functionality and caching strategy
  */
 
-const CACHE_NAME = 'filo-yonetim-v2-fixed';
+const CACHE_NAME = 'filo-yonetim-v2.3-fixed';
 const OFFLINE_URL = '/';
 
-// Assets to cache on install
+// Assets to cache on install (CDN resources only - build outputs cached dynamically)
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/index.js',
-  '/index.css',
+  // CDN Resources
   'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdn.jsdelivr.net/npm/toastify-js',
+  // Note: /assets/*.js and /assets/*.css are cached dynamically via fetch event
 ];
 
 // Install event - cache static assets

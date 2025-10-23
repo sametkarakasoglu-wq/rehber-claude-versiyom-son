@@ -248,7 +248,8 @@ async function fetchDataFromFirebase() {
       lastUpdate: data.lastUpdate || null
     };
 
-    console.log('✅ Veriler Firebase\'den alındı! (Araç:', result.vehiclesData.length, ', Müşteri:', result.customersData.length, ', Kiralama:', result.rentalsData.length, ')');
+    console.log('✅ Veriler Firebase\'den alındı! (Araç:', result.vehiclesData.length, ', Müşteri:', result.customersData.length, ', Kiralama:', result.rentalsData.length, ', Dosya:', result.documentsData.length, ')');
+    console.log('📄 documentsData örnek:', result.documentsData[0]); // İlk dosyayı göster
     return result;
   } catch (error) {
     console.error('❌ Firebase\'den veri çekme hatası:', error);
@@ -723,11 +724,83 @@ async function deleteFileFromStorage(fileUrl) {
     }
 }
 
+/**
+ * 🔥 Storage'dan tüm dosyaları listele ve metadata oluştur
+ * Kullanım: Metadata kayıp olduğunda Storage'dan dosyaları recover et
+ */
+async function listAllFilesFromStorage() {
+    if (!firebaseStorage) {
+        throw new Error('Firebase Storage başlatılmamış!');
+    }
+
+    try {
+        console.log('📂 Firebase Storage dosyaları taranıyor...');
+
+        const storageRef = firebaseStorage.ref('documents');
+        const result = await storageRef.listAll();
+
+        const files = [];
+        const categories = ['Faturalar', 'Muayeneler', 'Ruhsatlar', 'Sigortalar', 'Diğer'];
+
+        // Her kategori için dosyaları listele
+        for (const category of categories) {
+            try {
+                const categoryRef = firebaseStorage.ref(`documents/${category}`);
+                const categoryResult = await categoryRef.listAll();
+
+                console.log(`📁 ${category}: ${categoryResult.items.length} dosya bulundu`);
+
+                for (const itemRef of categoryResult.items) {
+                    try {
+                        const url = await itemRef.getDownloadURL();
+                        const metadata = await itemRef.getMetadata();
+
+                        // Dosya adından ID çıkar (timestamp kısmı)
+                        const fileName = itemRef.name;
+                        const timestamp = fileName.split('_')[0];
+                        const docId = `DOC-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+
+                        // Dosya tipini belirle
+                        const fileType = metadata.contentType?.includes('pdf') ? 'pdf' :
+                                        metadata.contentType?.includes('image') ? 'image' : 'other';
+
+                        files.push({
+                            id: docId,
+                            name: fileName,
+                            category: category,
+                            type: fileType,
+                            storageType: 'firebaseStorage',
+                            storagePath: `documents/${category}/${fileName}`,
+                            url: url,
+                            size: metadata.size || 0,
+                            uploadDate: metadata.timeCreated ? new Date(metadata.timeCreated) : new Date(),
+                            linkedVehicles: [],
+                            tags: []
+                        });
+                    } catch (fileError) {
+                        console.error(`❌ Dosya metadata alınamadı: ${itemRef.name}`, fileError);
+                    }
+                }
+            } catch (categoryError) {
+                console.warn(`⚠️ Kategori okunamadı: ${category}`, categoryError);
+            }
+        }
+
+        console.log(`✅ Toplam ${files.length} dosya metadata'sı oluşturuldu!`);
+        return files;
+
+    } catch (error) {
+        console.error('❌ listAllFilesFromStorage hatası:', error);
+        throw error;
+    }
+}
+
 // ============================================
 // GLOBAL EXPORTS (window object)
 // ============================================
 if (typeof window !== 'undefined') {
     window.uploadFileToStorage = uploadFileToStorage;
     window.deleteFileFromStorage = deleteFileFromStorage;
+    window.listAllFilesFromStorage = listAllFilesFromStorage;
     console.log('✅ Firebase Storage fonksiyonları window\'a export edildi');
 }
