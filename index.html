@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file: https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.abacus.ai https://storage.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com; connect-src 'self' ws://localhost:4001 ws://localhost:4002 ws://localhost:4003 ws://127.0.0.1:4001 wss://*.firebaseio.com https://*.firebaseio.com https://*.googleapis.com https://*.google.com https://firestore.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://*.firebasedatabase.app; frame-src 'self' blob: data: https://firebasestorage.googleapis.com https://storage.googleapis.com; object-src 'self' blob: data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file: https://cdnjs.cloudflare.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https://cdn.abacus.ai https://storage.googleapis.com https://*.googleusercontent.com https://firebasestorage.googleapis.com; connect-src 'self' ws://localhost:4001 ws://localhost:4002 ws://localhost:4003 ws://127.0.0.1:4001 wss://*.firebaseio.com https://*.firebaseio.com https://*.googleapis.com https://*.google.com https://firestore.googleapis.com https://www.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.cloudfunctions.net https://firebasestorage.googleapis.com https://*.firebasedatabase.app https://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app wss://rehber-filo-default-rtdb.europe-west1.firebasedatabase.app; frame-src 'self' blob: data: https://firebasestorage.googleapis.com https://storage.googleapis.com; object-src 'self' blob: data:;">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <meta name="description" content="Arac filonuzu verimli bicimde yonetmek icin profesyonel takip ve kontrol sistemi.">
     <meta name="theme-color" content="#1e40af">
@@ -48,7 +48,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
-    <script src="/src/config/firebase-config.js"></script>
+    <!-- 🔥 firebase-config.js artık src/index.js içinde import ediliyor (Vite bundle dahil) -->
 
     <script>
         console.log('[index.html] loaded');

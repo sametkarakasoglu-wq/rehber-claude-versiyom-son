@@ -4467,3 +4467,149 @@ input:checked + .slider:before {
     font-size: 15px;
   }
 }
+
+/* ================================================
+   MOBİL OPTİMİZASYONLARI - TOUCH & PERFORMANCE
+   ================================================ */
+
+/* iOS ve Android için tap highlight kaldır */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly butonlar (minimum 44x44px - Apple HIG) */
+button,
+.btn,
+.accordion-header,
+.settings-accordion-header {
+  min-height: 44px;
+  touch-action: manipulation; /* Çift tap zoom'u engelle */
+  user-select: none; /* Text seçimini engelle */
+}
+
+/* Accordion'lar için smooth transition */
+.settings-accordion-content {
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.settings-accordion.active .settings-accordion-content {
+  opacity: 1;
+}
+
+/* Mobil için daha yumuşak animasyonlar */
+@media (max-width: 768px) {
+  /* Tüm transition'ları biraz hızlandır */
+  * {
+    transition-duration: 0.2s !important;
+  }
+
+  /* Accordion header'lar için active state */
+  .settings-accordion-header:active,
+  .accordion-header:active {
+    background-color: rgba(0, 0, 0, 0.05);
+    transform: scale(0.98);
+  }
+
+  /* Button'lar için active state feedback */
+  button:active,
+  .btn:active {
+    transform: scale(0.96);
+  }
+
+  /* Card'lar için touch feedback */
+  .card:active,
+  .file-preview-card:active,
+  .document-category-header:active {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+
+  /* Modal'lar mobilde daha hızlı açılsın */
+  .modal-overlay {
+    animation-duration: 0.15s;
+  }
+
+  /* Scrollbar'ı mobilde gizle (daha temiz görünüm) */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  /* Input'lar için daha iyi touch feedback */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    transform: scale(1.01);
+    transition: transform 0.2s ease;
+  }
+
+  /* Toast mesajları mobilde daha geniş */
+  .toast {
+    left: 10px;
+    right: 10px;
+    max-width: calc(100vw - 20px);
+  }
+}
+
+/* Küçük ekranlar için ekstra optimizasyonlar (360px altı) */
+@media (max-width: 360px) {
+  /* Font boyutlarını biraz küçült */
+  body {
+    font-size: 14px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  h3 {
+    font-size: 18px;
+  }
+
+  /* Button padding'leri küçült */
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  /* Card padding'leri azalt */
+  .card {
+    padding: 14px;
+  }
+}
+
+/* Landscape mode optimizasyonları (mobil yatay) */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Header'ı biraz küçült */
+  header {
+    padding: 12px 0;
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  /* Modal'ları daha kompakt yap */
+  .modal {
+    max-height: 85vh;
+  }
+
+  /* Accordion content'leri daha kısa */
+  .settings-accordion-content {
+    max-height: 60vh !important;
+    overflow-y: auto;
+  }
+}

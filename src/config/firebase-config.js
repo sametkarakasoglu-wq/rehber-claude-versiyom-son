@@ -140,14 +140,20 @@ async function fetchDataFromFirebase() {
     throw new Error('Firebase başlatılmamış! Lütfen önce Firebase ayarlarını yapın.');
   }
 
+  // 📱 Mobil cihaz kontrolü
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const timeout = isMobile ? 15000 : 10000; // Mobilde 15 saniye, desktop'ta 10 saniye
+
+  console.log(`🔄 Firebase veri çekiliyor... (${isMobile ? '📱 Mobil' : '💻 Desktop'} - Timeout: ${timeout}ms)`);
+
   let data = null;
 
   try {
     console.log('🔄 Firebase snapshot çekiliyor (WebSocket)...');
 
-    // 🚀 Timeout ekle (5 saniye - kısa tutalım)
+    // 🚀 Timeout ekle (mobilde daha uzun)
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('WebSocket timeout')), 5000)
+      setTimeout(() => reject(new Error('WebSocket timeout')), timeout)
     );
 
     const snapshotPromise = firebaseDatabase.ref().once('value');
@@ -167,12 +173,33 @@ async function fetchDataFromFirebase() {
 
       console.log('🌐 REST API ile veri çekiliyor:', restUrl);
 
-      const response = await fetch(restUrl, {
+      // 🚀 Fetch timeout wrapper (mobilde daha uzun)
+      const fetchWithTimeout = async (url, options, timeout) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (error) {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            throw new Error('REST API timeout - Bağlantı çok yavaş');
+          }
+          throw error;
+        }
+      };
+
+      const response = await fetchWithTimeout(restUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json'
         }
-      });
+      }, timeout);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -183,6 +210,12 @@ async function fetchDataFromFirebase() {
 
     } catch (restError) {
       console.error('❌ REST API de başarısız:', restError.message);
+
+      // 📱 Mobil için detaylı hata mesajı
+      if (isMobile) {
+        throw new Error(`Mobil bağlantı hatası: ${restError.message}\n\nLütfen internet bağlantınızı kontrol edin ve tekrar deneyin.`);
+      }
+
       throw new Error(`Firebase bağlantı hatası: ${restError.message}`);
     }
   }
@@ -796,11 +829,51 @@ async function listAllFilesFromStorage() {
 }
 
 // ============================================
-// GLOBAL EXPORTS (window object)
+// ES6 MODULE EXPORTS (for Vite bundling)
 // ============================================
-if (typeof window !== 'undefined') {
-    window.uploadFileToStorage = uploadFileToStorage;
-    window.deleteFileFromStorage = deleteFileFromStorage;
-    window.listAllFilesFromStorage = listAllFilesFromStorage;
-    console.log('✅ Firebase Storage fonksiyonları window\'a export edildi');
-}
+export {
+    initializeFirebase,
+    testFirebaseConnection,
+    sendDataToFirebase,
+    fetchDataFromFirebase,
+    loadDataFromFirebase,
+    setupFirebaseListener,
+    removeFirebaseListener,
+    autoLoadFromFirebase,
+    requestNotificationPermission,
+    saveDeviceToken,
+    listenForMessages,
+    sendNotificationToAllDevices,
+    triggerNotification,
+    initializePushNotifications,
+    uploadFileToStorage,
+    deleteFileFromStorage,
+    listAllFilesFromStorage
+};
+
+// ============================================
+// GLOBAL EXPORTS (window object - backward compatibility)
+// ============================================
+window.initializeFirebase = initializeFirebase;
+window.testFirebaseConnection = testFirebaseConnection;
+window.sendDataToFirebase = sendDataToFirebase;
+window.fetchDataFromFirebase = fetchDataFromFirebase;
+window.loadDataFromFirebase = loadDataFromFirebase;
+window.setupFirebaseListener = setupFirebaseListener;
+window.removeFirebaseListener = removeFirebaseListener;
+window.autoLoadFromFirebase = autoLoadFromFirebase;
+window.requestNotificationPermission = requestNotificationPermission;
+window.saveDeviceToken = saveDeviceToken;
+window.listenForMessages = listenForMessages;
+window.sendNotificationToAllDevices = sendNotificationToAllDevices;
+window.triggerNotification = triggerNotification;
+window.initializePushNotifications = initializePushNotifications;
+window.uploadFileToStorage = uploadFileToStorage;
+window.deleteFileFromStorage = deleteFileFromStorage;
+window.listAllFilesFromStorage = listAllFilesFromStorage;
+
+console.log('✅ Firebase fonksiyonları export edildi:', {
+    initializeFirebase: typeof initializeFirebase,
+    listAllFilesFromStorage: typeof listAllFilesFromStorage,
+    uploadFileToStorage: typeof uploadFileToStorage
+});

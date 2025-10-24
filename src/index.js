@@ -13,10 +13,42 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 console.log('🚀 index.js yükleniyor...');
 
+// ============================================
+// 🔥 FIREBASE CONFIG IMPORT (ES6 Module)
+// ============================================
+import {
+    initializeFirebase,
+    testFirebaseConnection,
+    sendDataToFirebase,
+    fetchDataFromFirebase,
+    loadDataFromFirebase,
+    setupFirebaseListener,
+    removeFirebaseListener,
+    autoLoadFromFirebase,
+    uploadFileToStorage,
+    deleteFileFromStorage,
+    listAllFilesFromStorage
+} from './config/firebase-config.js';
+
+// Export to window for backward compatibility
+window.initializeFirebase = initializeFirebase;
+window.testFirebaseConnection = testFirebaseConnection;
+window.sendDataToFirebase = sendDataToFirebase;
+window.fetchDataFromFirebase = fetchDataFromFirebase;
+window.loadDataFromFirebase = loadDataFromFirebase;
+window.setupFirebaseListener = setupFirebaseListener;
+window.removeFirebaseListener = removeFirebaseListener;
+window.autoLoadFromFirebase = autoLoadFromFirebase;
+window.uploadFileToStorage = uploadFileToStorage;
+window.deleteFileFromStorage = deleteFileFromStorage;
+window.listAllFilesFromStorage = listAllFilesFromStorage;
+
+console.log('✅ Firebase fonksiyonları import edildi ve window\'a atandı');
+
 /**
- * Firebase functions are loaded from firebase-config.js (included in index.html)
- * Available globals: initializeFirebase, sendDataToFirebase, loadDataFromFirebase, 
- * uploadDocumentToStorage, deleteDocumentFromStorage, getFileMetadata
+ * Firebase functions imported from firebase-config.js (ES6 module)
+ * Available: initializeFirebase, sendDataToFirebase, loadDataFromFirebase,
+ * uploadFileToStorage, deleteFileFromStorage, listAllFilesFromStorage
  */
 
 // 🔒 Render guard - prevent concurrent renders
@@ -108,18 +140,23 @@ let state = {
             showFooter: true,
             showBackground: true, // NEW: Toggle for background
         }
-    }
+    },
+    openSettingsAccordions: []
 };
 // State update function
-function setState(newState) {
+function setState(newState, skipRender = false) {
     // 🔍 DEBUG: Kim çağırdı?
     const stack = new Error().stack;
     const caller = stack?.split('\n')[2]?.trim() || 'unknown';
-    console.log('🔧 setState() çağrıldı | Caller:', caller, '| State keys:', Object.keys(newState));
-    
+    console.log('🔧 setState() çağrıldı | Caller:', caller, '| State keys:', Object.keys(newState), '| skipRender:', skipRender);
+
     state = Object.assign(Object.assign({}, state), newState);
     saveDataToLocalStorage(); // ÖNCE veriyi kaydet. Bu, eklenti çakışmalarını önler.
-    renderApp();
+
+    // ✅ FIX: skipRender true ise renderApp() çağırma (accordion kapanmasını önle)
+    if (!skipRender) {
+        renderApp();
+    }
 }
 // Verileri localStorage'a kaydetme fonksiyonu
 function saveDataToLocalStorage() {
@@ -825,8 +862,9 @@ const SettingsPage = () => {
       </div>
   `;
     const sections = [
-        {
-            icon: 'fa-chart-pie',
+		{
+			id: 'dashboard',
+			icon: 'fa-chart-pie',
             title: 'Gösterge Paneli',
             content: `
               ${createSettingCard('Metrik Görünürlüğü', `
@@ -844,8 +882,9 @@ const SettingsPage = () => {
               `)}
           `
         },
-        {
-            icon: 'fa-car',
+		{
+			id: 'vehicles-reminders',
+			icon: 'fa-car',
             title: 'Araç ve Hatırlatmalar',
             content: `
               ${createSettingCard('Hatırlatma Süresi', `
@@ -860,8 +899,9 @@ const SettingsPage = () => {
               `)}
           `
         },
-        {
-            icon: 'fa-bell',
+		{
+			id: 'notifications',
+			icon: 'fa-bell',
             title: 'Bildirimler',
             content: `
               ${createSettingCard('Bildirim Türleri', `
@@ -872,8 +912,9 @@ const SettingsPage = () => {
               `)}
           `
         },
-        {
-            icon: 'fa-solid fa-file-invoice',
+		{
+			id: 'pdf-report',
+			icon: 'fa-solid fa-file-invoice',
             title: 'PDF & Rapor Ayarları',
             content: `
               ${createSettingCard('Şirket Bilgileri', `
@@ -918,8 +959,9 @@ const SettingsPage = () => {
               `)}
           `
         },
-        {
-            icon: 'fa-palette',
+		{
+			id: 'appearance',
+			icon: 'fa-palette',
             title: 'Görünüm ve Tema',
             content: `
               <div class="setting-card">
@@ -938,8 +980,9 @@ const SettingsPage = () => {
               </div>
           `
         },
-        {
-            icon: 'fa-brands fa-google',
+		{
+			id: 'firebase',
+			icon: 'fa-brands fa-google',
             title: 'Firebase Senkronizasyon',
             content: `
               ${createSettingCard('Firebase Bağlantı Ayarları', `
@@ -1022,8 +1065,9 @@ const SettingsPage = () => {
               `)}
           `
         },
-        {
-            icon: 'fa-solid fa-mobile-screen',
+		{
+			id: 'pwa',
+			icon: 'fa-solid fa-mobile-screen',
             title: 'PWA (Mobil Uygulama)',
             content: `
               <div id="pwa-install-container">
@@ -1051,17 +1095,24 @@ const SettingsPage = () => {
                       <h4 style="color: #166534; margin: 0 0 8px 0;">Uygulama Zaten Kurulu!</h4>
                       <p style="color: #166534; margin: 0; font-size: 14px;">Ana ekranınızdan kullanabilirsiniz.</p>
                   </div>
-                  <div id="pwa-dev-mode" style="padding: 20px; text-align: center; background: #fef3c7; border-radius: 12px; border: 2px solid #f59e0b;">
-                      <i class="fa-solid fa-info-circle" style="font-size: 48px; color: #d97706; margin-bottom: 12px;"></i>
-                      <h4 style="color: #92400e; margin: 0 0 8px 0;">PWA Kurulum Butonu</h4>
-                      <p style="color: #92400e; margin: 0 0 12px 0; font-size: 14px;">Bu özellik sadece <strong>HTTPS</strong> üzerinden çalışır.</p>
-                      <p style="color: #92400e; margin: 0; font-size: 13px; opacity: 0.8;">Şu an <strong>localhost</strong>'tasınız. Production'da (https://rehber-filo.web.app) açınca "Şimdi Yükle" butonu görünecek!</p>
+                  <div id="pwa-dev-mode" style="padding: 20px; text-align: center; background: #e0f2fe; border-radius: 12px; border: 2px solid #0ea5e9;">
+                      <i class="fa-solid fa-mobile-screen" style="font-size: 48px; color: #0369a1; margin-bottom: 12px;"></i>
+                      <h4 style="color: #0c4a6e; margin: 0 0 8px 0;">📱 Ana Ekrana Ekle</h4>
+                      <p style="color: #0c4a6e; margin: 0 0 12px 0; font-size: 14px; line-height: 1.6;">
+                          Bu uygulamayı cihazınızın <strong>ana ekranına</strong> ekleyebilirsiniz!
+                      </p>
+                      <p style="color: #0c4a6e; margin: 0; font-size: 13px; opacity: 0.9; line-height: 1.5;">
+                          <strong>Nasıl:</strong> Tarayıcınızın menüsünden
+                          <span style="background: #0ea5e9; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">⋮</span>
+                          → <strong>"Ana Ekrana Ekle"</strong> seçeneğini tıklayın.
+                      </p>
                   </div>
               </div>
           `
         },
-        {
-            icon: 'fa-solid fa-database',
+		{
+			id: 'backup-restore',
+			icon: 'fa-solid fa-database',
             title: 'Yedekleme ve Geri Yükleme',
             content: `
               ${createSettingCard('Veri Yönetimi', `
@@ -1075,22 +1126,27 @@ const SettingsPage = () => {
           `
         }
     ];
-    const accordionsHTML = sections.map(section => `
-      <div class="settings-accordion">
-          <button class="settings-accordion-header">
+    const openAccordions = Array.isArray(state.openSettingsAccordions) ? state.openSettingsAccordions : [];
+    const accordionsHTML = sections.map(section => {
+        const isActive = openAccordions.includes(section.id);
+        const contentStyle = isActive ? 'style="max-height: 9999px;"' : '';
+        return `
+      <div class="settings-accordion${isActive ? ' active' : ''}" data-accordion-id="${section.id}">
+          <button class="settings-accordion-header" data-accordion-id="${section.id}">
               <div class="accordion-title">
                   <i class="fa-solid ${section.icon}"></i>
                   <span>${section.title}</span>
               </div>
               <i class="fa-solid fa-chevron-right accordion-arrow"></i>
           </button>
-          <div class="settings-accordion-content">
+          <div class="settings-accordion-content" ${contentStyle}>
               <div class="accordion-content-inner">
                   ${section.content}
               </div>
           </div>
       </div>
-  `).join('');
+  `;
+    }).join('');
     return `
       <header class="page-header">
           <h1>Ayarlar</h1>
@@ -2473,6 +2529,22 @@ const App = () => {
     </div>
   `;
 };
+function restoreSettingsAccordionState() {
+    if (!Array.isArray(state.openSettingsAccordions)) {
+        state.openSettingsAccordions = [];
+        return;
+    }
+    state.openSettingsAccordions.forEach((accordionId) => {
+        const accordion = document.querySelector(`.settings-accordion[data-accordion-id="${accordionId}"]`);
+        if (!accordion)
+            return;
+        accordion.classList.add('active');
+        const content = accordion.querySelector('.settings-accordion-content');
+        if (content) {
+            content.style.maxHeight = content.scrollHeight + 'px';
+        }
+    });
+}
 function renderApp() {
     // 🔒 Prevent concurrent renders
     if (isRendering) {
@@ -2521,6 +2593,7 @@ function renderApp() {
             body.className = state.theme;
         }
         render(App(), root);
+        restoreSettingsAccordionState();
     }
     catch (error) {
         console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
@@ -2611,31 +2684,48 @@ function attachEventListeners() {
                 const accordion = header.closest('.settings-accordion') || header.parentElement;
                 if (!accordion)
                     return;
-                const content = accordion.querySelector('.settings-accordion-content');
-                if (!content)
-                    return;
-                // Toggle active class
-                const isActive = accordion.classList.contains('active');
-                if (isActive) {
-                    accordion.classList.remove('active');
-                    content.style.maxHeight = '0';
-                }
-                else {
-                    accordion.classList.add('active');
-                    content.style.maxHeight = content.scrollHeight + 'px';
-                }
+            const content = accordion.querySelector('.settings-accordion-content');
+            if (!content)
+                return;
+            const accordionId = header.dataset.accordionId || accordion.getAttribute('data-accordion-id');
+            if (!accordionId)
+                return;
+            const isActive = accordion.classList.contains('active');
+            if (isActive) {
+                accordion.classList.remove('active');
+                content.style.maxHeight = '0';
+                state.openSettingsAccordions = Array.isArray(state.openSettingsAccordions)
+                    ? state.openSettingsAccordions.filter(id => id !== accordionId)
+                    : [];
+            }
+            else {
+                document.querySelectorAll('.settings-accordion.active').forEach(otherAccordion => {
+                    if (otherAccordion === accordion)
+                        return;
+                    otherAccordion.classList.remove('active');
+                    const otherContent = otherAccordion.querySelector('.settings-accordion-content');
+                    if (otherContent) {
+                        otherContent.style.maxHeight = '0';
+                    }
+                });
+                accordion.classList.add('active');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                state.openSettingsAccordions = [accordionId];
+            }
             };
-            // Both click and touch events for mobile compatibility
+            // ✅ FIX: Sadece click event kullan (modern tarayıcılar mobilde de hızlı)
+            // touchend + click = çift tetikleme = accordion açılıp hemen kapanma sorunu!
             header.addEventListener('click', clickHandler);
-            header.addEventListener('touchend', clickHandler);
         });
         // Settings Page - Company Info & PDF settings
         document.querySelectorAll('[data-company-key]').forEach(input => {
             input.addEventListener('input', (e) => {
+                e.stopPropagation();
                 const key = e.target.dataset.companyKey;
                 const value = e.target.value;
                 const newCompanyInfo = Object.assign(Object.assign({}, state.settings.companyInfo), { [key]: value });
-                setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) });
+                // ✅ FIX: skipRender=true ekle (her tuşta accordion kapanmasın!)
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { companyInfo: newCompanyInfo }) }, true);
             });
         });
         (_b = document.getElementById('companyLogoFile')) === null || _b === void 0 ? void 0 : _b.addEventListener('change', (e) => {
@@ -2742,6 +2832,7 @@ function attachEventListeners() {
                     content.style.maxHeight = '0';
                 }
             });
+            state.openSettingsAccordions = [];
         }));
         // Settings Page - Backup and Restore
         (_k = document.getElementById('btn-export-data')) === null || _k === void 0 ? void 0 : _k.addEventListener('click', () => {
@@ -2780,7 +2871,8 @@ function attachEventListeners() {
                 const key = inputId.replace('firebase-', '');
                 const value = e.target.value;
                 const newFirebaseConfig = Object.assign(Object.assign({}, state.settings.firebaseConfig), { [key]: value });
-                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseConfig: newFirebaseConfig }) });
+                // ✅ FIX: skipRender=true ekle (her tuşta accordion kapanmasın!)
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseConfig: newFirebaseConfig }) }, true);
             });
             // Also prevent click and focus events from bubbling
             input.addEventListener('click', (e) => e.stopPropagation());
@@ -2792,7 +2884,8 @@ function attachEventListeners() {
             masterPasswordInput.addEventListener('input', (e) => {
                 e.stopPropagation();
                 const password = e.target.value;
-                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseMasterPassword: password }) });
+                // ✅ FIX: skipRender=true ekle (her tuşta accordion kapanmasın!)
+                setState({ settings: Object.assign(Object.assign({}, state.settings), { firebaseMasterPassword: password }) }, true);
             });
             masterPasswordInput.addEventListener('click', (e) => e.stopPropagation());
             masterPasswordInput.addEventListener('focus', (e) => e.stopPropagation());
