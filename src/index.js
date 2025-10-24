@@ -2267,10 +2267,45 @@ const RentalEditModal = () => {
                 </div>
 
                 <div class="file-upload-group">
-                    <label>Belge Yükleme</label>
+                    <label>Belge Yönetimi</label>
+
+                    <!-- 📄 MEVCUT YÜKLENMIŞ DOSYALAR -->
+                    ${rental.contractFile || rental.invoiceFile ? `
+                        <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #0369a1;">
+                                <i class="fa-solid fa-paperclip"></i> Yüklenmiş Dosyalar
+                            </h4>
+                            ${rental.contractFile ? `
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+                                    <i class="fa-solid fa-file-contract" style="color: #0ea5e9;"></i>
+                                    <span style="flex: 1; font-size: 14px;">${rental.contractFile}</span>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.open('${rental.contractFileUrl}', '_blank')" style="padding: 4px 12px;">
+                                        <i class="fa-solid fa-eye"></i> Görüntüle
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-action="remove-contract" style="padding: 4px 12px; background: #ef4444; border-color: #dc2626;">
+                                        <i class="fa-solid fa-trash"></i> Sil
+                                    </button>
+                                </div>
+                            ` : ''}
+                            ${rental.invoiceFile ? `
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0;">
+                                    <i class="fa-solid fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
+                                    <span style="flex: 1; font-size: 14px;">${rental.invoiceFile}</span>
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.open('${rental.invoiceFileUrl}', '_blank')" style="padding: 4px 12px;">
+                                        <i class="fa-solid fa-eye"></i> Görüntüle
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-action="remove-invoice" style="padding: 4px 12px; background: #ef4444; border-color: #dc2626;">
+                                        <i class="fa-solid fa-trash"></i> Sil
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+
+                    <!-- 📤 YENİ DOSYA YÜKLE -->
                     <div class="file-input-with-selector">
                          <div class="file-input-wrapper">
-                              <span><i class="fa-solid fa-file-contract"></i> Sözleşme</span>
+                              <span><i class="fa-solid fa-file-contract"></i> ${rental.contractFile ? 'Sözleşmeyi Değiştir' : 'Sözleşme Yükle'}</span>
                               <input type="file" id="contractFile" name="contractFile" accept=".pdf,.jpg,.jpeg,.png">
                          </div>
                          <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="contractFile" data-category="Faturalar">
@@ -2287,7 +2322,7 @@ const RentalEditModal = () => {
                     </div>
                     <div class="file-input-with-selector">
                          <div class="file-input-wrapper">
-                              <span><i class="fa-solid fa-file-invoice-dollar"></i> Fatura</span>
+                              <span><i class="fa-solid fa-file-invoice-dollar"></i> ${rental.invoiceFile ? 'Faturayı Değiştir' : 'Fatura Yükle'}</span>
                               <input type="file" id="invoiceFile" name="invoiceFile" accept=".pdf,.jpg,.jpeg,.png">
                          </div>
                          <button type="button" class="btn btn-secondary btn-sm btn-select-from-docs" data-target="invoiceFile" data-category="Faturalar">
@@ -4083,12 +4118,36 @@ function attachEventListeners() {
 
                     // 🔥 URL OLUŞTURMA: selectedDoc zaten url içeriyor
                     let fileUrl = selectedDoc.url;
-                    
-                    // 🔥 EĞER URL YOKSA VEYA LOCAL PATH İSE: Dosyayı yükle ve URL oluştur
+
+                    // 🔥 EĞER URL YOKSA VEYA LOCAL PATH İSE: fileData'dan blob URL oluştur
                     if (!fileUrl || fileUrl.startsWith('C:') || fileUrl.startsWith('/') || fileUrl.startsWith('file://')) {
-                        console.warn('⚠️ Geçersiz URL, dosya yüklenemedi:', fileUrl);
-                        showToast('Bu dosya için geçerli bir URL bulunamadı. Lütfen dosyayı yeniden yükleyin.', 'error');
-                        return;
+                        console.warn('⚠️ Geçersiz URL tespit edildi:', fileUrl);
+
+                        // fileData (base64) varsa blob URL oluştur
+                        if (selectedDoc.fileData) {
+                            try {
+                                // Base64'ten blob oluştur
+                                const base64Data = selectedDoc.fileData.split(',')[1] || selectedDoc.fileData;
+                                const mimeType = selectedDoc.fileData.match(/data:([^;]+);/)?.[1] || 'application/octet-stream';
+                                const byteCharacters = atob(base64Data);
+                                const byteNumbers = new Array(byteCharacters.length);
+                                for (let i = 0; i < byteCharacters.length; i++) {
+                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                }
+                                const byteArray = new Uint8Array(byteNumbers);
+                                const blob = new Blob([byteArray], { type: mimeType });
+                                fileUrl = URL.createObjectURL(blob);
+                                console.log('✅ Base64\'ten blob URL oluşturuldu:', fileUrl);
+                            } catch (error) {
+                                console.error('❌ Blob URL oluşturulamadı:', error);
+                                showToast('Dosya yüklenirken hata oluştu', 'error');
+                                return;
+                            }
+                        } else {
+                            console.error('❌ Ne URL ne de fileData mevcut!');
+                            showToast('Bu dosya için geçerli bir URL bulunamadı. Lütfen dosyayı yeniden yükleyin.', 'error');
+                            return;
+                        }
                     }
 
                     console.log('✅ Final fileUrl:', fileUrl);
