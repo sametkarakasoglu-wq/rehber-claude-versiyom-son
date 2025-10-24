@@ -783,10 +783,14 @@ async function listAllFilesFromStorage() {
 
                 console.log(`📁 ${category}: ${categoryResult.items.length} dosya bulundu`);
 
-                for (const itemRef of categoryResult.items) {
+                // 🚀 PARALEL PROCESSING: Tüm dosyaları aynı anda çek!
+                const filePromises = categoryResult.items.map(async (itemRef) => {
                     try {
-                        const url = await itemRef.getDownloadURL();
-                        const metadata = await itemRef.getMetadata();
+                        // URL ve metadata'yı PARALEL çek
+                        const [url, metadata] = await Promise.all([
+                            itemRef.getDownloadURL(),
+                            itemRef.getMetadata()
+                        ]);
 
                         // Dosya adından ID çıkar (timestamp kısmı)
                         const fileName = itemRef.name;
@@ -797,7 +801,7 @@ async function listAllFilesFromStorage() {
                         const fileType = metadata.contentType?.includes('pdf') ? 'pdf' :
                                         metadata.contentType?.includes('image') ? 'image' : 'other';
 
-                        files.push({
+                        return {
                             id: docId,
                             name: fileName,
                             category: category,
@@ -809,11 +813,18 @@ async function listAllFilesFromStorage() {
                             uploadDate: metadata.timeCreated ? new Date(metadata.timeCreated) : new Date(),
                             linkedVehicles: [],
                             tags: []
-                        });
+                        };
                     } catch (fileError) {
                         console.error(`❌ Dosya metadata alınamadı: ${itemRef.name}`, fileError);
+                        return null; // Hatalı dosyayı atla
                     }
-                }
+                });
+
+                // Tüm dosyaları bekle ve sonuçları ekle
+                const categoryFiles = await Promise.all(filePromises);
+                files.push(...categoryFiles.filter(f => f !== null)); // null'ları filtrele
+
+                console.log(`✅ ${category}: ${categoryFiles.filter(f => f !== null).length} dosya yüklendi`);
             } catch (categoryError) {
                 console.warn(`⚠️ Kategori okunamadı: ${category}`, categoryError);
             }
