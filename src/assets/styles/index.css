@@ -4111,7 +4111,13 @@ input:checked + .slider:before {
     /* Grid düzenleri mobilde tek sütun */
     .stats-grid {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 16px; /* Daha fazla boşluk */
+    }
+
+    /* Dashboard panelleri mobilde tek sütun - ÖNEMLİ! */
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 
     .vehicles-grid {
@@ -6646,5 +6652,77 @@ body.dark .bottom-nav-item.active::before {
 
   .bottom-nav-item.active::before {
     animation: none !important;
+  }
+}
+
+/* ============================================ */
+/* 📱 "DİĞER" MODAL - Bottom Nav More Menu */
+/* ============================================ */
+
+.more-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--background-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
+}
+
+.more-menu-item:hover {
+  background: var(--mobile-active-bg);
+  transform: translateX(4px);
+}
+
+.more-menu-item:active {
+  transform: scale(0.98);
+}
+
+.more-menu-item i {
+  font-size: 20px;
+  color: var(--text-secondary);
+  width: 24px;
+  text-align: center;
+}
+
+.more-menu-item span {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.more-menu-item.active {
+  background: var(--mobile-active-bg);
+  border-color: var(--primary-color);
+}
+
+.more-menu-item.active i,
+.more-menu-item.active span {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* Dark Mode */
+body.dark .more-menu-item {
+  background: var(--sidebar-bg);
+}
+
+body.dark .more-menu-item:hover {
+  background: var(--mobile-active-bg);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .more-menu-item {
+    transition: none !important;
   }
 }

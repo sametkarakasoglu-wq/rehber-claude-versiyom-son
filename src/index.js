@@ -271,6 +271,7 @@ let state = {
     isRentalEditModalOpen: false,
     isReservationEditModalOpen: false,
     isMaintenanceEditModalOpen: false,
+    isMoreModalOpen: false, // 📱 Bottom Nav "Diğer" modal'ı
     // ✅ YENİ: Dosya yönetimi modal'ları
     isDocumentUploadModalOpen: false,
     isDocumentPreviewModalOpen: false,
@@ -2775,12 +2776,37 @@ const App = () => {
           <i class="fa-solid fa-folder-open"></i>
           <span>Dosyalar</span>
         </div>
-        <div class="bottom-nav-item ${state.activePage === 'settings' ? 'active' : ''}" data-page-id="settings">
-          <i class="fa-solid fa-gear"></i>
-          <span>Ayarlar</span>
+        <div class="bottom-nav-item" id="bottom-nav-more">
+          <i class="fa-solid fa-ellipsis"></i>
+          <span>Diğer</span>
         </div>
       </div>
     </nav>
+
+    <!-- 📱 "Diğer" Modal - Tüm diğer sayfalar -->
+    ${state.isMoreModalOpen ? `
+    <div class="modal-overlay active" id="more-modal-overlay">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <h2>Tüm Sayfalar</h2>
+          <button class="modal-close" id="close-more-modal">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="more-menu-list">
+            ${navItems.filter(item => !['vehicles', 'customers', 'rentals', 'documents'].includes(item.id)).map(item => `
+              <div class="more-menu-item ${state.activePage === item.id ? 'active' : ''}" data-page-id="${item.id}">
+                <i class="${item.icon}"></i>
+                <span>${item.text}</span>
+                ${state.activePage === item.id ? '<i class="fa-solid fa-check" style="margin-left: auto; color: var(--primary-color);"></i>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
     </div>
   `;
 };
@@ -3713,6 +3739,45 @@ function attachEventListeners() {
         // Open reservation/maintenance modals
         (_x = document.getElementById('add-reservation-btn')) === null || _x === void 0 ? void 0 : _x.addEventListener('click', () => openModal('reservation'));
         (_y = document.getElementById('add-maintenance-btn')) === null || _y === void 0 ? void 0 : _y.addEventListener('click', () => openModal('maintenance'));
+
+        // 📱 Bottom Nav "Diğer" Modal
+        const bottomNavMore = document.getElementById('bottom-nav-more');
+        if (bottomNavMore) {
+            bottomNavMore.addEventListener('click', () => {
+                triggerHaptic('medium');
+                setState({ isMoreModalOpen: true });
+            });
+        }
+
+        // Close "Diğer" modal
+        const closeMoreModal = document.getElementById('close-more-modal');
+        if (closeMoreModal) {
+            closeMoreModal.addEventListener('click', () => {
+                setState({ isMoreModalOpen: false });
+            });
+        }
+
+        // Close "Diğer" modal when clicking overlay
+        const moreModalOverlay = document.getElementById('more-modal-overlay');
+        if (moreModalOverlay) {
+            moreModalOverlay.addEventListener('click', (e) => {
+                if (e.target === moreModalOverlay) {
+                    setState({ isMoreModalOpen: false });
+                }
+            });
+        }
+
+        // Navigate from "Diğer" modal
+        document.querySelectorAll('.more-menu-item').forEach(item => {
+            const pageId = item.dataset.pageId;
+            if (pageId) {
+                item.addEventListener('click', () => {
+                    triggerHaptic('light');
+                    navigateTo(pageId);
+                    setState({ isMoreModalOpen: false });
+                });
+            }
+        });
         // Open rental/check-in modals
         document.querySelectorAll('.btn-rent').forEach(btn => {
             const card = btn.closest('.vehicle-card');
