@@ -14,42 +14,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 console.log('🚀 index.js yükleniyor...');
 
 // ============================================
-// 🔥 FIREBASE CONFIG IMPORT (ES6 Module)
+// 🔥 FIREBASE CONFIG (Loaded via script tag in index.html)
 // ============================================
-import {
-    initializeFirebase,
-    testFirebaseConnection,
-    sendDataToFirebase,
-    fetchDataFromFirebase,
-    loadDataFromFirebase,
-    setupFirebaseListener,
-    removeFirebaseListener,
-    autoLoadFromFirebase,
-    uploadFileToStorage,
-    deleteFileFromStorage,
-    listAllFilesFromStorage
-} from './config/firebase-config.js';
-
-// Export to window for backward compatibility
-window.initializeFirebase = initializeFirebase;
-window.testFirebaseConnection = testFirebaseConnection;
-window.sendDataToFirebase = sendDataToFirebase;
-window.fetchDataFromFirebase = fetchDataFromFirebase;
-window.loadDataFromFirebase = loadDataFromFirebase;
-window.setupFirebaseListener = setupFirebaseListener;
-window.removeFirebaseListener = removeFirebaseListener;
-window.autoLoadFromFirebase = autoLoadFromFirebase;
-window.uploadFileToStorage = uploadFileToStorage;
-window.deleteFileFromStorage = deleteFileFromStorage;
-window.listAllFilesFromStorage = listAllFilesFromStorage;
-
-console.log('✅ Firebase fonksiyonları import edildi ve window\'a atandı');
-
 /**
- * Firebase functions imported from firebase-config.js (ES6 module)
- * Available: initializeFirebase, sendDataToFirebase, loadDataFromFirebase,
- * uploadFileToStorage, deleteFileFromStorage, listAllFilesFromStorage
+ * Firebase functions are now loaded globally via <script> tag in index.html
+ * All functions are available on window object:
+ * - initializeFirebase, testFirebaseConnection, sendDataToFirebase
+ * - fetchDataFromFirebase, loadDataFromFirebase, setupFirebaseListener
+ * - removeFirebaseListener, autoLoadFromFirebase
+ * - uploadFileToStorage, deleteFileFromStorage, listAllFilesFromStorage
  */
+
+console.log('✅ Firebase fonksiyonları window üzerinden kullanılabilir');
+console.log('✅ initializeFirebase mevcut:', typeof window.initializeFirebase === 'function');
 
 // 🔒 Render guard - prevent concurrent renders
 let isRendering = false;
