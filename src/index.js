@@ -2755,6 +2755,32 @@ const App = () => {
     ${DocumentUploadModal()}
     ${DocumentPreviewModal()}
     ${DocumentSelectorModal()}
+
+    <!-- 📱 Bottom Navigation (Mobile Only) -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-container">
+        <div class="bottom-nav-item ${state.activePage === 'vehicles' ? 'active' : ''}" data-page-id="vehicles">
+          <i class="fa-solid fa-car"></i>
+          <span>Araçlar</span>
+        </div>
+        <div class="bottom-nav-item ${state.activePage === 'customers' ? 'active' : ''}" data-page-id="customers">
+          <i class="fa-solid fa-users"></i>
+          <span>Müşteriler</span>
+        </div>
+        <div class="bottom-nav-item ${state.activePage === 'rentals' ? 'active' : ''}" data-page-id="rentals">
+          <i class="fa-solid fa-file-contract"></i>
+          <span>Kiralamalar</span>
+        </div>
+        <div class="bottom-nav-item ${state.activePage === 'documents' ? 'active' : ''}" data-page-id="documents">
+          <i class="fa-solid fa-folder-open"></i>
+          <span>Dosyalar</span>
+        </div>
+        <div class="bottom-nav-item ${state.activePage === 'settings' ? 'active' : ''}" data-page-id="settings">
+          <i class="fa-solid fa-gear"></i>
+          <span>Ayarlar</span>
+        </div>
+      </div>
+    </nav>
     </div>
   `;
 };
@@ -3591,7 +3617,8 @@ function attachEventListeners() {
             card.addEventListener('click', clickHandler);
         });
         // Navigation
-        document.querySelectorAll('.nav-link, .stat-card, .quick-access-btn').forEach(el => {
+        // 📱 Navigation: Sidebar, Bottom Nav, Dashboard Cards, Quick Access
+        document.querySelectorAll('.nav-link, .bottom-nav-item, .stat-card, .quick-access-btn').forEach(el => {
             const pageId = el.dataset.pageId;
             // Special handling for quick access buttons that open modals instead of navigating
             if (pageId === 'vehicles' && el.classList.contains('btn-add-vehicle'))
@@ -3605,6 +3632,12 @@ function attachEventListeners() {
             if (pageId) {
                 el.addEventListener('click', (e) => {
                     e.preventDefault();
+
+                    // 📳 Bottom Nav: Medium haptic feedback
+                    if (el.classList.contains('bottom-nav-item')) {
+                        triggerHaptic('medium');
+                    }
+
                     navigateTo(pageId);
                 });
             }
