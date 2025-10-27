@@ -283,8 +283,7 @@ let state = {
             showFooter: true,
             showBackground: true, // NEW: Toggle for background
         }
-    },
-    openSettingsAccordions: [] as string[], // Tracks which settings accordions stay open after re-render
+    }
 };
 
 // 🔒 Render guard - concurrent render prevention
@@ -1122,7 +1121,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
 
   const sections = [
       {
-          id: 'dashboard',
           icon: 'fa-chart-pie',
           title: 'Gösterge Paneli',
           content: `
@@ -1142,7 +1140,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'vehicles-reminders',
           icon: 'fa-car',
           title: 'Araç ve Hatırlatmalar',
           content: `
@@ -1159,7 +1156,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'notifications',
           icon: 'fa-bell',
           title: 'Bildirimler',
           content: `
@@ -1172,7 +1168,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'pdf-report',
           icon: 'fa-solid fa-file-invoice',
           title: 'PDF & Rapor Ayarları',
           content: `
@@ -1219,7 +1214,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'appearance',
           icon: 'fa-palette',
           title: 'Görünüm ve Tema',
           content: `
@@ -1240,7 +1234,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'firebase',
           icon: 'fa-brands fa-google',
           title: 'Firebase Senkronizasyon',
           content: `
@@ -1320,7 +1313,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'pwa',
           icon: 'fa-solid fa-mobile-screen',
           title: 'PWA (Mobil Uygulama)',
           content: `
@@ -1345,7 +1337,6 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
           `
       },
       {
-          id: 'backup-restore',
           icon: 'fa-solid fa-database',
           title: 'Yedekleme ve Geri Yükleme',
           content: `
@@ -1361,26 +1352,22 @@ const SettingsPage = (): string => { // Tamamen yeniden yazıldı
       }
   ];
 
-  const accordionsHTML = sections.map(section => {
-      const isActive = state.openSettingsAccordions?.includes(section.id);
-      const contentStyle = isActive ? 'style="max-height: 9999px;"' : '';
-      return `
-      <div class="settings-accordion${isActive ? ' active' : ''}" data-accordion-id="${section.id}">
-          <button class="settings-accordion-header" data-accordion-id="${section.id}">
+  const accordionsHTML = sections.map(section => `
+      <div class="settings-accordion">
+          <button class="settings-accordion-header">
               <div class="accordion-title">
                   <i class="fa-solid ${section.icon}"></i>
                   <span>${section.title}</span>
               </div>
               <i class="fa-solid fa-chevron-right accordion-arrow"></i>
           </button>
-          <div class="settings-accordion-content" ${contentStyle}>
+          <div class="settings-accordion-content">
               <div class="accordion-content-inner">
                   ${section.content}
               </div>
           </div>
       </div>
-  `;
-  }).join('');
+  `).join('');
 
   return `
       <header class="page-header">
@@ -2251,24 +2238,6 @@ const App = () => {
   `;
 };
 
-function restoreSettingsAccordionState() {
-  if (!Array.isArray(state.openSettingsAccordions)) {
-    state.openSettingsAccordions = [];
-    return;
-  }
-
-  state.openSettingsAccordions.forEach((accordionId) => {
-    const accordion = document.querySelector(`.settings-accordion[data-accordion-id="${accordionId}"]`) as HTMLElement | null;
-    if (!accordion) return;
-
-    accordion.classList.add('active');
-    const content = accordion.querySelector('.settings-accordion-content') as HTMLElement | null;
-    if (content) {
-      content.style.maxHeight = content.scrollHeight + 'px';
-    }
-  });
-}
-
 function renderApp() {
   // 🔒 Prevent concurrent renders
   if (isRendering) {
@@ -2315,7 +2284,6 @@ function renderApp() {
     }
     
     render(App(), root);
-    restoreSettingsAccordionState();
   } catch (error) {
     console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
     const root = document.getElementById('root');
@@ -2408,37 +2376,25 @@ function attachEventListeners() {
         const clickHandler = (e: Event) => {
             e.preventDefault();
             e.stopPropagation();
-
+            
             const accordion = header.closest('.settings-accordion') || header.parentElement;
             if (!accordion) return;
-
+            
             const content = accordion.querySelector('.settings-accordion-content') as HTMLElement;
             if (!content) return;
-
-            const accordionId = (header as HTMLElement).dataset.accordionId || accordion.getAttribute('data-accordion-id');
-            if (!accordionId) return;
-
+            
+            // Toggle active class
             const isActive = accordion.classList.contains('active');
-
+            
             if (isActive) {
                 accordion.classList.remove('active');
                 content.style.maxHeight = '0';
-                state.openSettingsAccordions = (state.openSettingsAccordions || []).filter(id => id !== accordionId);
             } else {
-                document.querySelectorAll('.settings-accordion.active').forEach(otherAccordion => {
-                    if (otherAccordion === accordion) return;
-                    otherAccordion.classList.remove('active');
-                    const otherContent = otherAccordion.querySelector('.settings-accordion-content') as HTMLElement | null;
-                    if (otherContent) {
-                        otherContent.style.maxHeight = '0';
-                    }
-                });
                 accordion.classList.add('active');
                 content.style.maxHeight = content.scrollHeight + 'px';
-                state.openSettingsAccordions = [accordionId];
             }
         };
-
+        
         // Both click and touch events for mobile compatibility
         header.addEventListener('click', clickHandler);
         header.addEventListener('touchend', clickHandler);
@@ -2571,7 +2527,6 @@ function attachEventListeners() {
                 content.style.maxHeight = '0';
             }
         });
-        state.openSettingsAccordions = [];
     });
 
     // Settings Page - Backup and Restore

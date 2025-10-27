@@ -14,6 +14,65 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 console.log('🚀 index.js yükleniyor...');
 
 // ============================================
+// 🔥 FIREBASE READY CHECK
+// ============================================
+/**
+ * Firebase config dosyası defer ile yüklendiği için
+ * fonksiyonların hazır olduğundan emin olmamız gerekiyor
+ */
+function waitForFirebase() {
+    return new Promise((resolve) => {
+        // Kritik fonksiyonları kontrol et
+        const checkFunctions = () => {
+            return typeof window.initializeFirebase === 'function' &&
+                   typeof window.listAllFilesFromStorage === 'function' &&
+                   typeof window.uploadFileToStorage === 'function';
+        };
+
+        if (checkFunctions()) {
+            console.log('✅ Firebase fonksiyonları zaten hazır!');
+            resolve();
+            return;
+        }
+
+        console.log('⏳ Firebase config bekleniyor...');
+
+        // Event listener ile bekle
+        const onReady = () => {
+            if (checkFunctions()) {
+                console.log('✅ Firebase config event ile yüklendi!');
+                resolve();
+            }
+        };
+        window.addEventListener('firebaseConfigReady', onReady, { once: true });
+
+        // Polling ile de kontrol et (fallback)
+        let attempts = 0;
+        const maxAttempts = 50; // 50 x 100ms = 5 saniye
+        const pollInterval = setInterval(() => {
+            attempts++;
+            console.log(`🔍 Firebase polling attempt ${attempts}/${maxAttempts}`);
+
+            if (checkFunctions()) {
+                clearInterval(pollInterval);
+                window.removeEventListener('firebaseConfigReady', onReady);
+                console.log('✅ Firebase polling ile yüklendi!');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                window.removeEventListener('firebaseConfigReady', onReady);
+                console.error('⚠️ Firebase config yüklenemedi (timeout) - Fonksiyonlar:', {
+                    initializeFirebase: typeof window.initializeFirebase,
+                    listAllFilesFromStorage: typeof window.listAllFilesFromStorage,
+                    uploadFileToStorage: typeof window.uploadFileToStorage
+                });
+                resolve(); // Yine de devam et
+            }
+        }, 100);
+    });
+}
+
+// ============================================
 // 🔥 FIREBASE CONFIG (Loaded via script tag in index.html)
 // ============================================
 /**
@@ -24,9 +83,6 @@ console.log('🚀 index.js yükleniyor...');
  * - removeFirebaseListener, autoLoadFromFirebase
  * - uploadFileToStorage, deleteFileFromStorage, listAllFilesFromStorage
  */
-
-console.log('✅ Firebase fonksiyonları window üzerinden kullanılabilir');
-console.log('✅ initializeFirebase mevcut:', typeof window.initializeFirebase === 'function');
 
 // ============================================
 // ============================================
@@ -5877,9 +5933,13 @@ if (typeof window !== 'undefined') {
         initializeApp();
     }
 }
-function initializeApp() {
+async function initializeApp() {
     var _a, _b;
     console.log('🏁 Uygulama başlatılıyor...');
+
+    // 🔥 KRITIK: Firebase config'in yüklenmesini bekle
+    await waitForFirebase();
+
     console.log('📍 document.body:', document.body);
     console.log('📍 document.readyState:', document.readyState);
     try {

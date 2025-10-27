@@ -888,3 +888,8 @@ console.log('✅ Firebase fonksiyonları export edildi:', {
     listAllFilesFromStorage: typeof listAllFilesFromStorage,
     uploadFileToStorage: typeof uploadFileToStorage
 });
+
+// 🎯 Firebase config tamamen yüklendi - event fırlat
+window.firebaseConfigReady = true;
+window.dispatchEvent(new Event('firebaseConfigReady'));
+console.log('🔥 Firebase Config hazır - firebaseConfigReady event fırlatıldı');

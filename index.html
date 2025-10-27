@@ -48,8 +48,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
-    <!-- 🔥 Firebase Config (window global olarak yükleniyor) -->
-    <script type="text/javascript" src="/firebase-config.js"></script>
+    <!-- 🔥 Firebase Config - defer ile yüklenerek DOM ready sonrası execute edilir -->
+    <script defer src="/firebase-config.js"></script>
 
     <script>
         console.log('[index.html] loaded');
