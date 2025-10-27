@@ -29,46 +29,36 @@ function waitForFirebase() {
                    typeof window.uploadFileToStorage === 'function';
         };
 
+        // Firebase HEAD'de blocking load edildiği için zaten hazır olmalı
         if (checkFunctions()) {
-            console.log('✅ Firebase fonksiyonları zaten hazır!');
+            console.log('✅ Firebase fonksiyonları HEAD\'de yüklendi - hazır!');
             resolve();
             return;
         }
 
-        console.log('⏳ Firebase config bekleniyor...');
-
-        // Event listener ile bekle
-        const onReady = () => {
-            if (checkFunctions()) {
-                console.log('✅ Firebase config event ile yüklendi!');
-                resolve();
-            }
-        };
-        window.addEventListener('firebaseConfigReady', onReady, { once: true });
-
-        // Polling ile de kontrol et (fallback)
+        // Eğer yoksa (çok nadir), kısa bir polling yap
+        console.warn('⚠️ Firebase beklenmedik şekilde yüklenmedi - polling başlatılıyor...');
         let attempts = 0;
-        const maxAttempts = 50; // 50 x 100ms = 5 saniye
+        const maxAttempts = 10; // 10 x 50ms = 500ms
         const pollInterval = setInterval(() => {
             attempts++;
-            console.log(`🔍 Firebase polling attempt ${attempts}/${maxAttempts}`);
 
             if (checkFunctions()) {
                 clearInterval(pollInterval);
-                window.removeEventListener('firebaseConfigReady', onReady);
-                console.log('✅ Firebase polling ile yüklendi!');
+                console.log(`✅ Firebase ${attempts * 50}ms sonra yüklendi!`);
                 resolve();
             } else if (attempts >= maxAttempts) {
                 clearInterval(pollInterval);
-                window.removeEventListener('firebaseConfigReady', onReady);
-                console.error('⚠️ Firebase config yüklenemedi (timeout) - Fonksiyonlar:', {
+                console.error('❌ FATAL: Firebase 500ms\'de yüklenemedi - Fonksiyonlar:', {
+                    firebase: typeof window.firebase,
                     initializeFirebase: typeof window.initializeFirebase,
                     listAllFilesFromStorage: typeof window.listAllFilesFromStorage,
                     uploadFileToStorage: typeof window.uploadFileToStorage
                 });
+                alert('⚠️ Firebase yüklenemedi! Lütfen sayfayı yenileyin ve cache\'i temizleyin (Ctrl+Shift+R)');
                 resolve(); // Yine de devam et
             }
-        }, 100);
+        }, 50);
     });
 }
 
