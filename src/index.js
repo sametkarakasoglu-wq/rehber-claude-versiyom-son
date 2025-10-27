@@ -29,6 +29,109 @@ console.log('✅ Firebase fonksiyonları window üzerinden kullanılabilir');
 console.log('✅ initializeFirebase mevcut:', typeof window.initializeFirebase === 'function');
 
 // ============================================
+// ============================================
+// 🔄 PULL-TO-REFRESH UTILITY
+// ============================================
+let pullToRefreshState = {
+    startY: 0,
+    currentY: 0,
+    isDragging: false,
+    threshold: 80, // Pull threshold in pixels
+    maxPull: 120
+};
+
+function initPullToRefresh() {
+    const mainContent = document.querySelector('.main-content');
+    if (!mainContent) return;
+
+    // Create pull indicator
+    let pullIndicator = document.getElementById('pull-indicator');
+    if (!pullIndicator) {
+        pullIndicator = document.createElement('div');
+        pullIndicator.id = 'pull-indicator';
+        pullIndicator.style.cssText = `
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            z-index: 9999;
+        `;
+        pullIndicator.innerHTML = '<i class="fa-solid fa-arrow-down"></i>';
+        mainContent.style.position = 'relative';
+        mainContent.insertBefore(pullIndicator, mainContent.firstChild);
+    }
+
+    mainContent.addEventListener('touchstart', (e) => {
+        if (mainContent.scrollTop === 0) {
+            pullToRefreshState.startY = e.touches[0].pageY;
+            pullToRefreshState.isDragging = true;
+        }
+    }, { passive: true });
+
+    mainContent.addEventListener('touchmove', (e) => {
+        if (!pullToRefreshState.isDragging) return;
+
+        pullToRefreshState.currentY = e.touches[0].pageY;
+        const pullDistance = pullToRefreshState.currentY - pullToRefreshState.startY;
+
+        if (pullDistance > 0 && mainContent.scrollTop === 0) {
+            const limitedPull = Math.min(pullDistance, pullToRefreshState.maxPull);
+            const opacity = Math.min(limitedPull / pullToRefreshState.threshold, 1);
+
+            pullIndicator.style.opacity = opacity;
+            pullIndicator.style.top = `${-60 + limitedPull}px`;
+
+            if (limitedPull >= pullToRefreshState.threshold) {
+                pullIndicator.innerHTML = '<i class="fa-solid fa-rotate"></i>';
+                pullIndicator.style.color = '#10b981';
+            } else {
+                pullIndicator.innerHTML = '<i class="fa-solid fa-arrow-down"></i>';
+                pullIndicator.style.color = '#94a3b8';
+            }
+        }
+    }, { passive: true });
+
+    mainContent.addEventListener('touchend', () => {
+        if (!pullToRefreshState.isDragging) return;
+
+        const pullDistance = pullToRefreshState.currentY - pullToRefreshState.startY;
+
+        if (pullDistance >= pullToRefreshState.threshold) {
+            // Trigger refresh
+            triggerHaptic('success');
+            pullIndicator.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            pullIndicator.style.color = '#5b86e5';
+
+            // Simulate refresh (reload data from Firebase or localStorage)
+            setTimeout(() => {
+                renderApp();
+                showToast('Sayfa yenilendi! 🔄', 'success');
+
+                // Reset indicator
+                pullIndicator.style.opacity = 0;
+                pullIndicator.style.top = '-60px';
+            }, 800);
+        } else {
+            // Reset if not pulled enough
+            pullIndicator.style.opacity = 0;
+            pullIndicator.style.top = '-60px';
+        }
+
+        pullToRefreshState.isDragging = false;
+        pullToRefreshState.startY = 0;
+        pullToRefreshState.currentY = 0;
+    }, { passive: true });
+}
+
+// ============================================
 // 📳 HAPTIC FEEDBACK UTILITY
 // ============================================
 /**
@@ -2636,6 +2739,9 @@ function renderApp() {
         }
         render(App(), root);
         restoreSettingsAccordionState();
+
+        // 🔄 Initialize pull-to-refresh after render
+        initPullToRefresh();
     }
     catch (error) {
         console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
