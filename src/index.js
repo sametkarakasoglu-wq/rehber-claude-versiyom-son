@@ -2,6 +2,10 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+
+// 🔥 FIREBASE CONFIG - Vite bundle'a dahil edilecek (dosya yolu sorunu yok!)
+import './firebase.js';
+
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -14,53 +18,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 console.log('🚀 index.js yükleniyor...');
 
 // ============================================
-// 🔥 FIREBASE READY CHECK
+// 🔥 FIREBASE MODULE IMPORT
 // ============================================
 /**
- * Firebase config dosyası defer ile yüklendiği için
- * fonksiyonların hazır olduğundan emin olmamız gerekiyor
+ * Firebase config artık Vite bundle'ında (src/firebase.js)
+ * Import ile yüklendiği için dosya yolu sorunu yok!
+ * Firebase SDK'lar HEAD'de blocking yüklendiği için hazır olmalı.
  */
-function waitForFirebase() {
-    return new Promise((resolve) => {
-        // Kritik fonksiyonları kontrol et
-        const checkFunctions = () => {
-            return typeof window.initializeFirebase === 'function' &&
-                   typeof window.listAllFilesFromStorage === 'function' &&
-                   typeof window.uploadFileToStorage === 'function';
-        };
-
-        // Firebase HEAD'de blocking load edildiği için zaten hazır olmalı
-        if (checkFunctions()) {
-            console.log('✅ Firebase fonksiyonları HEAD\'de yüklendi - hazır!');
-            resolve();
-            return;
-        }
-
-        // Eğer yoksa (çok nadir), kısa bir polling yap
-        console.warn('⚠️ Firebase beklenmedik şekilde yüklenmedi - polling başlatılıyor...');
-        let attempts = 0;
-        const maxAttempts = 10; // 10 x 50ms = 500ms
-        const pollInterval = setInterval(() => {
-            attempts++;
-
-            if (checkFunctions()) {
-                clearInterval(pollInterval);
-                console.log(`✅ Firebase ${attempts * 50}ms sonra yüklendi!`);
-                resolve();
-            } else if (attempts >= maxAttempts) {
-                clearInterval(pollInterval);
-                console.error('❌ FATAL: Firebase 500ms\'de yüklenemedi - Fonksiyonlar:', {
-                    firebase: typeof window.firebase,
-                    initializeFirebase: typeof window.initializeFirebase,
-                    listAllFilesFromStorage: typeof window.listAllFilesFromStorage,
-                    uploadFileToStorage: typeof window.uploadFileToStorage
-                });
-                alert('⚠️ Firebase yüklenemedi! Lütfen sayfayı yenileyin ve cache\'i temizleyin (Ctrl+Shift+R)');
-                resolve(); // Yine de devam et
-            }
-        }, 50);
-    });
-}
 
 // ============================================
 // 🔥 FIREBASE CONFIG (Loaded via script tag in index.html)
@@ -6025,8 +5989,12 @@ async function initializeApp() {
     var _a, _b;
     console.log('🏁 Uygulama başlatılıyor...');
 
-    // 🔥 KRITIK: Firebase config'in yüklenmesini bekle
-    await waitForFirebase();
+    // 🔥 Firebase config Vite bundle'ında - import ile yüklendi, hazır!
+    console.log('✅ Firebase import ile yüklendi:', {
+        firebase: typeof window.firebase,
+        initializeFirebase: typeof window.initializeFirebase,
+        listAllFilesFromStorage: typeof window.listAllFilesFromStorage
+    });
 
     console.log('📍 document.body:', document.body);
     console.log('📍 document.readyState:', document.readyState);

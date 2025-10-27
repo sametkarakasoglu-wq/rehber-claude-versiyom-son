@@ -31,14 +31,13 @@
     <link rel="stylesheet" href="src/assets/styles/index.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
 
-    <!-- 🔥 FIREBASE SDK - HEAD'de yükle (kritik) -->
+    <!-- 🔥 FIREBASE SDK - HEAD'de yükle (Vite bundle'dan önce) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
-    <!-- 🔥 FIREBASE CONFIG - SDK'lardan hemen sonra (kritik) -->
-    <script src="/firebase-config.js"></script>
+    <!-- 🔥 Firebase config artık Vite bundle'ında (src/firebase.js) -->
 </head>
 <body>
     <!--
