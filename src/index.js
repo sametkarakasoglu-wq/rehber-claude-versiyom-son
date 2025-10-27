@@ -132,6 +132,44 @@ function initPullToRefresh() {
 }
 
 // ============================================
+// 🖼️ IMAGE LAZY LOADING
+// ============================================
+function initLazyLoading() {
+    if (!('IntersectionObserver' in window)) {
+        console.warn('IntersectionObserver not supported - lazy loading disabled');
+        return;
+    }
+
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                const src = img.dataset.src;
+
+                if (src) {
+                    img.src = src;
+                    img.removeAttribute('data-src');
+                    img.classList.add('loaded');
+                    observer.unobserve(img);
+                }
+            }
+        });
+    }, {
+        rootMargin: '50px' // Load images 50px before they enter viewport
+    });
+
+    // Observe all images with data-src attribute
+    document.querySelectorAll('img[data-src]').forEach(img => {
+        imageObserver.observe(img);
+    });
+
+    // Also observe background images
+    document.querySelectorAll('[data-bg-src]').forEach(el => {
+        imageObserver.observe(el);
+    });
+}
+
+// ============================================
 // 📳 HAPTIC FEEDBACK UTILITY
 // ============================================
 /**
@@ -2740,8 +2778,11 @@ function renderApp() {
         render(App(), root);
         restoreSettingsAccordionState();
 
-        // 🔄 Initialize pull-to-refresh after render
+                // 🔄 Initialize pull-to-refresh after render
         initPullToRefresh();
+
+        // 🖼️ Initialize lazy loading for images
+        initLazyLoading();
     }
     catch (error) {
         console.error('!!! HATA: renderApp fonksiyonunda bir sorun oluştu:', error);
