@@ -2668,9 +2668,9 @@ const App = () => {
     }
     return `
     <div class="app-container">
-      <!-- Hamburger Menu Button (Mobile) - GÜNCEL -->
-      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menüyü Aç/Kapat">
-        <i class="fa-solid fa-bars" id="menu-icon"></i>
+      <!-- Dashboard Butonu (Mobile) - Bottom nav varken artık dashboard'a dön butonu -->
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Ana Sayfaya Dön">
+        <i class="fa-solid fa-home" id="menu-icon"></i>
       </button>
 
       <!-- Sidebar Overlay (Mobile) -->
@@ -2863,61 +2863,14 @@ function attachEventListeners() {
     try {
         // console.log('Attaching event listeners...');
         // Mobile Menu Toggle
+        // 🏠 Dashboard Butonu (Mobil) - Bottom nav varken artık dashboard'a dön butonu
         const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        if (mobileMenuToggle && sidebar && sidebarOverlay) {
-            // Toggle mobile menu
+        if (mobileMenuToggle) {
             mobileMenuToggle.addEventListener('click', (e) => {
                 e.preventDefault();
-                triggerHaptic('light'); // 📳 Haptic feedback
-                sidebar.classList.toggle('mobile-open');
-                sidebarOverlay.classList.toggle('active');
-                // Update icon
-                const icon = mobileMenuToggle.querySelector('i');
-                if (icon) {
-                    if (sidebar.classList.contains('mobile-open')) {
-                        icon.className = 'fa-solid fa-times';
-                    }
-                    else {
-                        icon.className = 'fa-solid fa-bars';
-                    }
-                }
+                triggerHaptic('medium'); // 📳 Haptic feedback
+                navigateTo('dashboard'); // Dashboard'a git
             });
-            // Close menu when clicking overlay
-            sidebarOverlay.addEventListener('click', () => {
-                sidebar.classList.remove('mobile-open');
-                sidebarOverlay.classList.remove('active');
-                const icon = mobileMenuToggle.querySelector('i');
-                if (icon) {
-                    icon.className = 'fa-solid fa-bars';
-                }
-            });
-            // Close menu when clicking nav link (mobile)
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', () => {
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('mobile-open');
-                        sidebarOverlay.classList.remove('active');
-                        const icon = mobileMenuToggle.querySelector('i');
-                        if (icon) {
-                            icon.className = 'fa-solid fa-bars';
-                        }
-                    }
-                });
-            });
-            // Mobile Back Button
-            const mobileBackBtn = document.getElementById('mobile-back-btn');
-            if (mobileBackBtn) {
-                mobileBackBtn.addEventListener('click', () => {
-                    sidebar.classList.remove('mobile-open');
-                    sidebarOverlay.classList.remove('active');
-                    const icon = mobileMenuToggle.querySelector('i');
-                    if (icon) {
-                        icon.className = 'fa-solid fa-bars';
-                    }
-                });
-            }
         }
         // Theme switcher
         (_a = document.getElementById('theme-toggle')) === null || _a === void 0 ? void 0 : _a.addEventListener('change', (e) => {

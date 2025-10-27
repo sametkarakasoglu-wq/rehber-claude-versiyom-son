@@ -4111,13 +4111,33 @@ input:checked + .slider:before {
     /* Grid düzenleri mobilde tek sütun */
     .stats-grid {
         grid-template-columns: 1fr;
-        gap: 16px; /* Daha fazla boşluk */
+        gap: 12px; /* Mobilde daha kompakt */
+    }
+
+    /* Stat kartları mobilde kompakt */
+    .stat-card {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .stat-card .icon-wrapper {
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
+    }
+
+    .stat-card .info h3 {
+        font-size: 26px;
+    }
+
+    .stat-card .info p {
+        font-size: 13px;
     }
 
     /* Dashboard panelleri mobilde tek sütun - ÖNEMLİ! */
     .dashboard-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 
     .vehicles-grid {
@@ -6629,6 +6649,50 @@ button,
 
   .app-footer {
     padding-bottom: calc(70px + env(safe-area-inset-bottom)); /* Footer'ı bottom nav'ın üstüne taşı */
+  }
+
+  /* 📁 DOSYALAR - Mobilde kompakt görünüm */
+  .document-card {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .document-card-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .document-card-icon i {
+    font-size: 18px;
+  }
+
+  .document-card-info {
+    flex: 1 1 auto;
+    min-width: 0; /* Prevent overflow */
+  }
+
+  .document-card-name {
+    font-size: 13px;
+    max-width: 100%; /* Ensure ellipsis works */
+  }
+
+  .document-card-meta {
+    font-size: 11px;
+  }
+
+  .document-card-actions {
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .btn-icon i {
+    font-size: 14px;
   }
 }
 
