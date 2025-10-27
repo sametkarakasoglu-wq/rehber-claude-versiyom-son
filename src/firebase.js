@@ -893,3 +893,5 @@ console.log('✅ Firebase fonksiyonları export edildi:', {
 window.firebaseConfigReady = true;
 window.dispatchEvent(new Event('firebaseConfigReady'));
 console.log('🔥 Firebase Config hazır - firebaseConfigReady event fırlatıldı');
+// ES Module export (Vite bundle için gerekli)
+export {};
