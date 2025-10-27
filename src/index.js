@@ -28,6 +28,36 @@ console.log('🚀 index.js yükleniyor...');
 console.log('✅ Firebase fonksiyonları window üzerinden kullanılabilir');
 console.log('✅ initializeFirebase mevcut:', typeof window.initializeFirebase === 'function');
 
+// ============================================
+// 📳 HAPTIC FEEDBACK UTILITY
+// ============================================
+/**
+ * Trigger haptic feedback (vibration) on mobile devices
+ * @param {string} type - Type of haptic: 'light', 'medium', 'heavy', 'success', 'error', 'warning'
+ */
+function triggerHaptic(type = 'light') {
+    if (!('vibrate' in navigator)) return; // Browser doesn't support vibration
+
+    const patterns = {
+        light: [10],              // Quick tap
+        medium: [20],             // Medium tap
+        heavy: [30],              // Heavy tap
+        success: [10, 50, 10],    // Double tap (success)
+        error: [50, 100, 50],     // Buzz (error)
+        warning: [30, 50, 30],    // Alert pattern
+        delete: [20, 50, 20, 50, 20] // Triple tap (deletion)
+    };
+
+    const pattern = patterns[type] || patterns.light;
+
+    try {
+        navigator.vibrate(pattern);
+    } catch (e) {
+        // Silently fail if vibration doesn't work
+        console.debug('Haptic feedback failed:', e);
+    }
+}
+
 // 🔒 Render guard - prevent concurrent renders
 let isRendering = false;
 
@@ -2631,6 +2661,7 @@ function attachEventListeners() {
             // Toggle mobile menu
             mobileMenuToggle.addEventListener('click', (e) => {
                 e.preventDefault();
+                triggerHaptic('light'); // 📳 Haptic feedback
                 sidebar.classList.toggle('mobile-open');
                 sidebarOverlay.classList.toggle('active');
                 // Update icon
@@ -4228,6 +4259,32 @@ function attachEventListeners() {
             pwaDismissButton.addEventListener('click', handlePWADismissClick);
         }
 
+        // ============================================
+        // 📳 UNIVERSAL HAPTIC FEEDBACK FOR ALL BUTTONS
+        // ============================================
+        // Add haptic feedback to ALL buttons, links, and clickable elements
+        document.querySelectorAll('button, .btn, .action-btn, .nav-link, [role="button"]').forEach(element => {
+            // Check if already has haptic listener (prevent duplicates)
+            if (!element.dataset.hapticAdded) {
+                element.addEventListener('click', (e) => {
+                    // Different haptic patterns based on button type
+                    if (element.classList.contains('btn-delete') ||
+                        element.classList.contains('btn-icon-danger') ||
+                        element.textContent.includes('Sil')) {
+                        triggerHaptic('delete');
+                    } else if (element.classList.contains('btn-primary') ||
+                               element.classList.contains('btn-save') ||
+                               element.textContent.includes('Kaydet')) {
+                        triggerHaptic('medium');
+                    } else {
+                        triggerHaptic('light');
+                    }
+                }, { passive: true }); // Passive for better scroll performance
+
+                element.dataset.hapticAdded = 'true'; // Mark as having haptic
+            }
+        });
+
         // console.log('Event listeners attached successfully.');
     }
     catch (error) {
@@ -5412,6 +5469,15 @@ function generateRentalSummaryPDF(rental) {
  * @param duration Bildirimin ekranda kalma süresi (ms).
  */
 function showToast(message, type = 'success', duration = 4000) {
+    // 📳 Haptic feedback based on toast type
+    if (type === 'success') {
+        triggerHaptic('success');
+    } else if (type === 'error') {
+        triggerHaptic('error');
+    } else if (type === 'warning') {
+        triggerHaptic('warning');
+    }
+
     // Toast container'ı oluştur veya mevcut olanı bul
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {

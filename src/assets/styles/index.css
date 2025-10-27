@@ -68,6 +68,12 @@ body {
   background-color: var(--background-color);
   color: var(--text-primary);
   overflow: hidden; /* Prevent body scroll */
+
+  /* 📱 Safe Area Insets for iPhone X+ notch support */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  /* Don't add padding-top to avoid affecting layout */
 }
 
 #root {
@@ -6420,5 +6426,32 @@ button,
   to {
     transform: scale(4);
     opacity: 0;
+  }
+}
+
+/* =====================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ===================================================== */
+/**
+ * Respect user's motion preference for accessibility
+ * Disables all animations for users who prefer reduced motion
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep essential transforms but remove animations */
+  .modal-overlay,
+  .modal-content,
+  .vehicle-card,
+  .rental-card,
+  .toast {
+    animation: none !important;
   }
 }
